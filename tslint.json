@@ -6,7 +6,9 @@
     "jsRules": {},
     "rules": {
         "object-shorthand-properties-first": false,
-        "align": false
+        "align": false,
+        "no-increment-decrement": false,
+        "triple-equals": false
     },
     "rulesDirectory": []
 }

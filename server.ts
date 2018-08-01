@@ -1,4 +1,7 @@
 import * as net from 'net';
+import chalk from 'chalk';
+import * as readline from 'readline';
+import * as uuid from 'uuid/v4';
 
 interface HostInfo {
   host: string;
@@ -6,6 +9,7 @@ interface HostInfo {
 }
 
 interface PeerOptions {
+  name: string;
   seeds: HostInfo[];
   port: number;
   channels: string[];
@@ -15,6 +19,13 @@ interface RemotePeer {
   id: string;
   channels: string[];
   socket: net.Socket;
+}
+
+interface Message {
+  id: string;
+  channel?: string;
+  type: string;
+  data: any;
 }
 
 function decodeMessage(bufffer) {
@@ -30,22 +41,26 @@ function makePeerId(socket: net.Socket): string {
 }
 
 class PeerNode {
+  name: string;
   server: net.Server;
   seeds: HostInfo[];
   port: number;
   peers: Map<string, RemotePeer>;
   channels: string[];
+  processedMessages: Set<string>;
 
   constructor(options: PeerOptions) {
+    this.name = options.name;
     this.seeds = options.seeds;
     this.port = options.port;
     this.peers = new Map();
     this.channels = options.channels;
+    this.processedMessages = new Set();
   }
 
   async start() {
     this.server = net.createServer((socket) => {
-      console.log('New incoming connection');
+      this.log('New incoming connection');
       this.handleConnect(socket);
     });
 
@@ -68,7 +83,7 @@ class PeerNode {
       const socket = net.connect(port, host);
 
       socket.on('connect', async () => {
-        console.log('New outgoing connection');
+        this.log('New outgoing connection');
         this.handleConnect(socket);
         resolve();
       });
@@ -77,6 +92,10 @@ class PeerNode {
         reject(e);
       });
     });
+  }
+
+  log(...params) {
+    console.log(chalk.cyan(this.name), ...params);
   }
 
   async handleStart() {
@@ -89,7 +108,7 @@ class PeerNode {
     }));
   }
 
-  async handleConnect(socket) {
+  async handleConnect(socket: net.Socket) {
     const peerId = makePeerId(socket);
     const remotePeer = {
       id: peerId,
@@ -98,8 +117,11 @@ class PeerNode {
     };
     this.peers.set(peerId, remotePeer);
 
-    socket.on('data', (data) => {
-      console.log('Data recieved:', data);
+    const rl = readline.createInterface({
+      input: socket,
+    });
+
+    rl.on('line', (data) => {
       try {
         const msg = decodeMessage(data);
         this.handleMessage(msg);
@@ -109,24 +131,35 @@ class PeerNode {
     });
 
     socket.on('end', () => {
-      console.log('Peer disconnected');
+      this.log('Peer disconnected');
     });
   }
 
-  async handleMessage(msg) {
-    console.log('Message handler', msg);
+  async handleMessage(msg: Message) {
+    this.log('Message handler', msg);
+
+    if (this.processedMessages.has(msg.id)) {
+      this.log('Message already processed');
+      return;
+    }
+
+    if (msg.type == 'tx') {
+      this.broadcast(msg);
+    }
+
   }
 
-  async send(peer, msg) {
-    peer.write(encodeMessage(msg));
+  async send(peer: RemotePeer, msg: Message) {
+    this.processedMessages.add(msg.id);
+    peer.socket.write(encodeMessage(msg) + '\n');
   }
 
   async broadcast(msg: any, channelName?: string) {
-    for (const [k, v] of this.peers) {
-      const shouldSend = !channelName || v.channels.includes(channelName);
+    for (const [id, remotePeer] of this.peers) {
+      const shouldSend = !channelName || remotePeer.channels.includes(channelName);
 
       if (shouldSend) {
-        this.send(v, msg);
+        this.send(remotePeer, msg);
       }
     }
   }
@@ -136,35 +169,45 @@ class PeerNode {
   }
 }
 
+function sleep(timeInMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(), timeInMs);
+  });
+}
+
 (async () => {
   try {
     console.log('Starting servers');
-    const peer = new PeerNode({
-      port: 7777,
+    const seedPeer = new PeerNode({
+      name: 'Peer #00',
+      port: 7000,
       seeds: [],
       channels: [],
     });
-    await peer.start();
+    await seedPeer.start();
 
-    const peer2 = new PeerNode({
-      port: 7778,
-      seeds: [{
-        host: 'localhost',
-        port: 7777,
-      }],
-      channels: [],
-    });
-    await peer2.start();
+    const peers = [seedPeer];
+    for (let i = 1; i < 100; i++) {
+      const peer = new PeerNode({
+        name: 'Peer #' + String(i).padStart(2, '0'),
+        port: 7000 + i,
+        seeds: [{
+          host: 'localhost',
+          port: 7000,
+        }],
+        channels: [],
+      });
+      peers[i] = peer;
+      await peer.start();
 
-    const peer3 = new PeerNode({
-      port: 7779,
-      seeds: [{
-        host: 'localhost',
-        port: 7777,
-      }],
-      channels: [],
+    }
+    await sleep(3000);
+
+    peers[3].broadcast({
+      id: uuid(),
+      type: 'tx',
+      data: 'Some data on new tx' ,
     });
-    await peer3.start();
 
     console.log('Ready');
   } catch (e) {
