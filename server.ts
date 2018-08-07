@@ -2,6 +2,8 @@ import * as net from 'net';
 import chalk from 'chalk';
 import * as readline from 'readline';
 import * as uuid from 'uuid/v4';
+import * as lowdb from 'lowdb';
+import * as FileAsync from 'lowdb/adapters/FileAsync';
 
 interface HostInfo {
   host: string;
@@ -11,8 +13,11 @@ interface HostInfo {
 interface PeerOptions {
   name: string;
   seeds: HostInfo[];
+  host: string;
   port: number;
   channels: string[];
+  isByzantine: boolean;
+  dbFilename: string;
 }
 
 interface RemotePeer {
@@ -41,24 +46,39 @@ function makePeerId(socket: net.Socket): string {
 }
 
 class PeerNode {
+  id: string;
   name: string;
   server: net.Server;
   seeds: HostInfo[];
+  host: string;
   port: number;
   peers: Map<string, RemotePeer>;
   channels: string[];
   processedMessages: Set<string>;
+  isByzantine: boolean;
+  dbFilename: string;
+  db: lowdb.LowdbAsync<any>;
 
   constructor(options: PeerOptions) {
+    this.id = uuid();
     this.name = options.name;
     this.seeds = options.seeds;
+    this.host = options.host;
     this.port = options.port;
     this.peers = new Map();
     this.channels = options.channels;
     this.processedMessages = new Set();
+    this.isByzantine = options.isByzantine;
+    this.dbFilename = options.dbFilename;
   }
 
   async start() {
+    const adapter = new FileAsync(this.dbFilename);
+    this.db = await lowdb(adapter);
+
+    // Set some defaults (required if your JSON file is empty)
+    await this.db.defaults({ blocks: [] }).write();
+
     this.server = net.createServer((socket) => {
       this.log('New incoming connection');
       this.handleConnect(socket);
@@ -74,7 +94,7 @@ class PeerNode {
         resolve();
       });
 
-      this.server.listen(this.port);
+      this.server.listen(this.port, this.host);
     });
   }
 
@@ -180,9 +200,12 @@ function sleep(timeInMs: number): Promise<void> {
     console.log('Starting servers');
     const seedPeer = new PeerNode({
       name: 'Peer #00',
+      host: 'localhost',
       port: 7000,
       seeds: [],
       channels: [],
+      isByzantine: false,
+      dbFilename: '.data/peer0.json',
     });
     await seedPeer.start();
 
@@ -190,18 +213,21 @@ function sleep(timeInMs: number): Promise<void> {
     for (let i = 1; i < 100; i++) {
       const peer = new PeerNode({
         name: 'Peer #' + String(i).padStart(2, '0'),
+        host: 'localhost',
         port: 7000 + i,
         seeds: [{
           host: 'localhost',
           port: 7000,
         }],
         channels: [],
+        isByzantine: false,
+        dbFilename: `.data/peer${i}.json`,
       });
       peers[i] = peer;
       await peer.start();
 
     }
-    await sleep(3000);
+    await sleep(1000);
 
     peers[3].broadcast({
       id: uuid(),
