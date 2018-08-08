@@ -4,6 +4,7 @@ import * as readline from 'readline';
 import * as uuid from 'uuid/v4';
 import * as lowdb from 'lowdb';
 import * as FileAsync from 'lowdb/adapters/FileAsync';
+import { EventEmitter } from 'events';
 
 interface HostInfo {
   host: string;
@@ -27,10 +28,16 @@ interface RemotePeer {
 }
 
 interface Message {
-  id: string;
+  senderId?: string;
   channel?: string;
   type: string;
   data: any;
+}
+
+type BroadcastFn = (msg: any, channelName?: string) => void;
+
+enum MessageType {
+  Tx = 'tx',
 }
 
 function decodeMessage(bufffer) {
@@ -58,6 +65,7 @@ class PeerNode {
   isByzantine: boolean;
   dbFilename: string;
   db: lowdb.LowdbAsync<any>;
+  events: EventEmitter;
 
   constructor(options: PeerOptions) {
     this.id = uuid();
@@ -70,6 +78,7 @@ class PeerNode {
     this.processedMessages = new Set();
     this.isByzantine = options.isByzantine;
     this.dbFilename = options.dbFilename;
+    this.events = new EventEmitter();
   }
 
   async start() {
@@ -144,6 +153,7 @@ class PeerNode {
     rl.on('line', (data) => {
       try {
         const msg = decodeMessage(data);
+        msg.senderId = peerId;
         this.handleMessage(msg);
       } catch (e) {
         console.error(e);
@@ -158,25 +168,20 @@ class PeerNode {
   async handleMessage(msg: Message) {
     this.log('Message handler', msg);
 
-    if (this.processedMessages.has(msg.id)) {
-      this.log('Message already processed');
-      return;
-    }
-
-    if (msg.type == 'tx') {
-      this.broadcast(msg);
-    }
+    this.events.emit(msg.type, msg, this.broadcast.bind(this));
 
   }
 
   async send(peer: RemotePeer, msg: Message) {
-    this.processedMessages.add(msg.id);
     peer.socket.write(encodeMessage(msg) + '\n');
   }
 
   async broadcast(msg: any, channelName?: string) {
     for (const [id, remotePeer] of this.peers) {
-      const shouldSend = !channelName || remotePeer.channels.includes(channelName);
+      const isNewReciever = msg.senderId != remotePeer.id;
+      const isWildcard = !channelName;
+      const isSubscribed = remotePeer.channels.includes(channelName);
+      const shouldSend = isNewReciever && (isWildcard || isSubscribed);
 
       if (shouldSend) {
         this.send(remotePeer, msg);
@@ -184,8 +189,8 @@ class PeerNode {
     }
   }
 
-  async subscribe(channelName: string, handler: (msg) => void) {
-
+  addListener(eventName: MessageType, handler: (msg: any, broadcastFn?: BroadcastFn) => void) {
+    this.events.addListener(eventName, handler);
   }
 }
 
@@ -198,27 +203,19 @@ function sleep(timeInMs: number): Promise<void> {
 (async () => {
   try {
     console.log('Starting servers');
-    const seedPeer = new PeerNode({
-      name: 'Peer #00',
-      host: 'localhost',
-      port: 7000,
-      seeds: [],
-      channels: [],
-      isByzantine: false,
-      dbFilename: '.data/peer0.json',
-    });
-    await seedPeer.start();
 
-    const peers = [seedPeer];
-    for (let i = 1; i < 100; i++) {
+    const peers = [];
+    for (let i = 0; i < 100; i++) {
+      const seeds = (i == 0 ? [] : [{
+        host: 'localhost',
+        port: 7000,
+      }]);
+
       const peer = new PeerNode({
         name: 'Peer #' + String(i).padStart(2, '0'),
         host: 'localhost',
         port: 7000 + i,
-        seeds: [{
-          host: 'localhost',
-          port: 7000,
-        }],
+        seeds,
         channels: [],
         isByzantine: false,
         dbFilename: `.data/peer${i}.json`,
@@ -226,13 +223,22 @@ function sleep(timeInMs: number): Promise<void> {
       peers[i] = peer;
       await peer.start();
 
+      const pendingTransactions = [];
+      peer.addListener(MessageType.Tx, (msg, broadcast) => {
+        if (!pendingTransactions.some(tx => tx.hash == msg.data.hash)) {
+          pendingTransactions.push(msg.data);
+          broadcast(msg);
+        }
+      });
+
     }
     await sleep(1000);
 
     peers[3].broadcast({
-      id: uuid(),
-      type: 'tx',
-      data: 'Some data on new tx' ,
+      type: MessageType.Tx,
+      data: {
+        hash: 'abc',
+      },
     });
 
     console.log('Ready');
