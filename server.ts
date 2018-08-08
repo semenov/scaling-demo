@@ -12,7 +12,7 @@ interface HostInfo {
 }
 
 interface PeerOptions {
-  name: string;
+  id: string;
   seeds: HostInfo[];
   host: string;
   port: number;
@@ -96,7 +96,6 @@ function sendGreeting(socket: net.Socket, greetingData: GreetingData) {
 
 class Peer {
   id: string;
-  name: string;
   server: net.Server;
   seeds: HostInfo[];
   host: string;
@@ -108,8 +107,7 @@ class Peer {
   events: EventEmitter;
 
   constructor(options: PeerOptions) {
-    this.id = uuid();
-    this.name = options.name;
+    this.id = options.id;
     this.seeds = options.seeds;
     this.host = options.host;
     this.port = options.port;
@@ -156,7 +154,7 @@ class Peer {
   }
 
   log(...params) {
-    console.log(chalk.cyan(this.name), ...params);
+    console.log(chalk.cyan(`[${this.id}]`), ...params);
   }
 
   async handleStart() {
@@ -202,7 +200,7 @@ class Peer {
           this.log('Peers received', msg);
 
           for (const peer of msg.data.peers) {
-            if (!this.peers.has(peer.id)) {
+            if (peer.id != this.id && !this.peers.has(peer.id)) {
               await this.connect(peer.host, peer.port);
             }
           }
@@ -225,11 +223,11 @@ class Peer {
     this.events.emit(msg.type, msg, this.broadcast.bind(this));
 
   }
-  async broadcast(msg: any, channelName?: string) {
+  async broadcast(msg: Message) {
     for (const [id, remotePeer] of this.peers) {
       const isNewReciever = msg.senderId != remotePeer.id;
-      const isWildcard = !channelName;
-      const isSubscribed = remotePeer.channels.includes(channelName);
+      const isWildcard = !msg.channel;
+      const isSubscribed = remotePeer.channels.includes(msg.channel);
       const shouldSend = isNewReciever && (isWildcard || isSubscribed);
 
       if (shouldSend) {
@@ -238,7 +236,7 @@ class Peer {
     }
   }
 
-  addListener(eventName: MessageType, handler: (msg: any, broadcastFn?: BroadcastFn) => void) {
+  addListener(eventName: MessageType, handler: (msg: Message, broadcastFn?: BroadcastFn) => void) {
     this.events.addListener(eventName, handler);
   }
 }
@@ -291,19 +289,19 @@ async function createNode(options: NodeOptions) {
         dbFilename: `.data/peer${i}.json`,
         isByzantine: false,
         peerOptions : {
-          name: 'Peer #' + String(i).padStart(2, '0'),
+          id: 'peer_' + String(i).padStart(3, '0'),
           host: 'localhost',
           port: 7000 + i,
           seeds,
-          channels: [],
+          channels: (i % 5 != 0) ? [] : ['shard3'],
         },
       });
-
     }
     await sleep(1000);
 
     peers[1].broadcast({
       type: MessageType.Tx,
+      channel: 'shard3',
       data: {
         hash: 'abc',
       },
