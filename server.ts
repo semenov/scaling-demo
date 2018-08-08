@@ -18,7 +18,6 @@ interface PeerOptions {
   port: number;
   channels: string[];
   isByzantine: boolean;
-  dbFilename: string;
 }
 
 interface RemotePeer {
@@ -63,8 +62,6 @@ class PeerNode {
   channels: string[];
   processedMessages: Set<string>;
   isByzantine: boolean;
-  dbFilename: string;
-  db: lowdb.LowdbAsync<any>;
   events: EventEmitter;
 
   constructor(options: PeerOptions) {
@@ -77,17 +74,10 @@ class PeerNode {
     this.channels = options.channels;
     this.processedMessages = new Set();
     this.isByzantine = options.isByzantine;
-    this.dbFilename = options.dbFilename;
     this.events = new EventEmitter();
   }
 
   async start() {
-    const adapter = new FileAsync(this.dbFilename);
-    this.db = await lowdb(adapter);
-
-    // Set some defaults (required if your JSON file is empty)
-    await this.db.defaults({ blocks: [] }).write();
-
     this.server = net.createServer((socket) => {
       this.log('New incoming connection');
       this.handleConnect(socket);
@@ -206,6 +196,12 @@ function sleep(timeInMs: number): Promise<void> {
 
     const peers = [];
     for (let i = 0; i < 100; i++) {
+      const dbFilename = `.data/peer${i}.json`;
+      const adapter = new FileAsync(dbFilename);
+      const db = await lowdb(adapter);
+
+      await db.defaults({ blocks: [] }).write();
+
       const seeds = (i == 0 ? [] : [{
         host: 'localhost',
         port: 7000,
@@ -218,7 +214,6 @@ function sleep(timeInMs: number): Promise<void> {
         seeds,
         channels: [],
         isByzantine: false,
-        dbFilename: `.data/peer${i}.json`,
       });
       peers[i] = peer;
       await peer.start();
