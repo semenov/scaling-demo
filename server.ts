@@ -22,6 +22,8 @@ interface PeerOptions {
 interface RemotePeer {
   id: string;
   channels: string[];
+  host: string;
+  port: number;
   socket: net.Socket;
 }
 
@@ -36,18 +38,60 @@ type BroadcastFn = (msg: any, channelName?: string) => void;
 
 enum MessageType {
   Tx = 'tx',
+  Peers = 'peers',
+  Greeting = 'greeting',
 }
 
-function decodeMessage(bufffer) {
+function decodeMessage(bufffer: Buffer): Message {
   return JSON.parse(bufffer.toString());
 }
 
-function encodeMessage(msg) {
+function encodeMessage(msg: Message): string {
   return JSON.stringify(msg);
 }
 
 function makePeerId(socket: net.Socket): string {
   return socket.remoteAddress + ':' + socket.remotePort;
+}
+
+function sendMessage(socket: net.Socket, msg: Message) {
+  socket.write(encodeMessage(msg) + '\n');
+}
+
+function announcePeers(socket: net.Socket, peers: Map<string, RemotePeer>) {
+  const peersList = [];
+  peers.forEach((peer) => {
+    peersList.push({
+      id: peer.id,
+      host: peer.host,
+      port: peer.port,
+    });
+  });
+
+  const msg = {
+    type: 'peers',
+    data: {
+      peers: peersList,
+    },
+  };
+
+  sendMessage(socket, msg);
+}
+
+interface GreetingData {
+  peerId: string;
+  channels: string[];
+  host: string;
+  port: number;
+}
+
+function sendGreeting(socket: net.Socket, greetingData: GreetingData) {
+  const msg = {
+    type: MessageType.Greeting,
+    data: greetingData,
+  };
+
+  sendMessage(socket, msg);
 }
 
 class Peer {
@@ -126,23 +170,45 @@ class Peer {
   }
 
   async handleConnect(socket: net.Socket) {
-    const peerId = makePeerId(socket);
-    const remotePeer = {
-      id: peerId,
-      channels: [],
-      socket,
-    };
-    this.peers.set(peerId, remotePeer);
+    sendGreeting(socket, {
+      peerId: this.id,
+      channels: this.channels,
+      host: this.host,
+      port: this.port,
+    });
+    announcePeers(socket, this.peers);
 
     const rl = readline.createInterface({
       input: socket,
     });
 
-    rl.on('line', (data) => {
+    rl.on('line', async (data) => {
       try {
         const msg = decodeMessage(data);
-        msg.senderId = peerId;
-        this.handleMessage(msg);
+
+        if (msg.type == MessageType.Greeting) {
+          this.log('Greeting received', msg);
+
+          const peerId = msg.data.peerId;
+          const remotePeer = {
+            id: peerId,
+            channels: msg.data.channels,
+            host: msg.data.host,
+            port: msg.data.port,
+            socket,
+          };
+          this.peers.set(peerId, remotePeer);
+        } else if (msg.type == MessageType.Peers) {
+          this.log('Peers received', msg);
+
+          for (const peer of msg.data.peers) {
+            if (!this.peers.has(peer.id)) {
+              await this.connect(peer.host, peer.port);
+            }
+          }
+        } else {
+          this.handleMessage(msg);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -159,11 +225,6 @@ class Peer {
     this.events.emit(msg.type, msg, this.broadcast.bind(this));
 
   }
-
-  async send(peer: RemotePeer, msg: Message) {
-    peer.socket.write(encodeMessage(msg) + '\n');
-  }
-
   async broadcast(msg: any, channelName?: string) {
     for (const [id, remotePeer] of this.peers) {
       const isNewReciever = msg.senderId != remotePeer.id;
@@ -172,7 +233,7 @@ class Peer {
       const shouldSend = isNewReciever && (isWildcard || isSubscribed);
 
       if (shouldSend) {
-        this.send(remotePeer, msg);
+        sendMessage(remotePeer.socket, { ...msg, senderId: this.id  });
       }
     }
   }
@@ -220,7 +281,7 @@ async function createNode(options: NodeOptions) {
     console.log('Starting servers');
 
     const peers = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
       const seeds = (i == 0 ? [] : [{
         host: 'localhost',
         port: 7000,
@@ -241,7 +302,7 @@ async function createNode(options: NodeOptions) {
     }
     await sleep(1000);
 
-    peers[3].broadcast({
+    peers[1].broadcast({
       type: MessageType.Tx,
       data: {
         hash: 'abc',
