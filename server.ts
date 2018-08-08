@@ -17,7 +17,6 @@ interface PeerOptions {
   host: string;
   port: number;
   channels: string[];
-  isByzantine: boolean;
 }
 
 interface RemotePeer {
@@ -51,7 +50,7 @@ function makePeerId(socket: net.Socket): string {
   return socket.remoteAddress + ':' + socket.remotePort;
 }
 
-class PeerNode {
+class Peer {
   id: string;
   name: string;
   server: net.Server;
@@ -73,7 +72,6 @@ class PeerNode {
     this.peers = new Map();
     this.channels = options.channels;
     this.processedMessages = new Set();
-    this.isByzantine = options.isByzantine;
     this.events = new EventEmitter();
   }
 
@@ -190,40 +188,54 @@ function sleep(timeInMs: number): Promise<void> {
   });
 }
 
+interface NodeOptions {
+  dbFilename: string;
+  isByzantine: boolean;
+  peerOptions: PeerOptions;
+}
+
+async function createNode(options: NodeOptions) {
+  const dbFilename = options.dbFilename;
+  const adapter = new FileAsync(dbFilename);
+  const db = await lowdb(adapter);
+
+  await db.defaults({ blocks: [] }).write();
+
+  const peer = new Peer(options.peerOptions);
+  await peer.start();
+
+  const pendingTransactions = [];
+  peer.addListener(MessageType.Tx, (msg, broadcast) => {
+    if (!pendingTransactions.some(tx => tx.hash == msg.data.hash)) {
+      pendingTransactions.push(msg.data);
+      broadcast(msg);
+    }
+  });
+
+  return peer;
+}
+
 (async () => {
   try {
     console.log('Starting servers');
 
     const peers = [];
     for (let i = 0; i < 100; i++) {
-      const dbFilename = `.data/peer${i}.json`;
-      const adapter = new FileAsync(dbFilename);
-      const db = await lowdb(adapter);
-
-      await db.defaults({ blocks: [] }).write();
-
       const seeds = (i == 0 ? [] : [{
         host: 'localhost',
         port: 7000,
       }]);
 
-      const peer = new PeerNode({
-        name: 'Peer #' + String(i).padStart(2, '0'),
-        host: 'localhost',
-        port: 7000 + i,
-        seeds,
-        channels: [],
+      peers[i] = await createNode({
+        dbFilename: `.data/peer${i}.json`,
         isByzantine: false,
-      });
-      peers[i] = peer;
-      await peer.start();
-
-      const pendingTransactions = [];
-      peer.addListener(MessageType.Tx, (msg, broadcast) => {
-        if (!pendingTransactions.some(tx => tx.hash == msg.data.hash)) {
-          pendingTransactions.push(msg.data);
-          broadcast(msg);
-        }
+        peerOptions : {
+          name: 'Peer #' + String(i).padStart(2, '0'),
+          host: 'localhost',
+          port: 7000 + i,
+          seeds,
+          channels: [],
+        },
       });
 
     }
