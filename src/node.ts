@@ -9,19 +9,22 @@ interface NodeOptions {
 }
 
 export async function createNode(options: NodeOptions) {
-  const dbFilename = options.dbFilename;
-  const adapter = new FileAsync(dbFilename);
-  const db = await lowdb(adapter);
-
-  await db.defaults({ blocks: [] }).write();
+  // For testing puposes we temporarily don't use persisctence layer
+  // const dbFilename = options.dbFilename;
+  // const adapter = new FileAsync(dbFilename);
+  // const db = await lowdb(adapter);
+  // await db.defaults({ blocks: [] }).write();
 
   const peer = new Peer(options.peerOptions);
   await peer.start();
 
-  const pendingTransactions = [];
+  const pendingTransactions = new Map();
+  const blocks = new Map();
+
   peer.addListener(MessageType.Tx, (msg, broadcast) => {
-    if (!pendingTransactions.some(tx => tx.hash == msg.data.hash)) {
-      pendingTransactions.push(msg.data);
+    const isNewTx = !pendingTransactions.has(msg.data.hash)
+    if (isNewTx) {
+      pendingTransactions.set(msg.data.hash, msg.data);
       broadcast(msg);
     }
   });
