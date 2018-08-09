@@ -22,7 +22,7 @@ export async function createNode(options: NodeOptions) {
   const blocks = new Map();
 
   peer.addListener(MessageType.Tx, (msg, broadcast) => {
-    const isNewTx = !pendingTransactions.has(msg.data.hash)
+    const isNewTx = !pendingTransactions.has(msg.data.hash);
     if (isNewTx) {
       pendingTransactions.set(msg.data.hash, msg.data);
       broadcast(msg);

@@ -1,7 +1,7 @@
 import * as objectHash from 'object-hash';
 import { signObject, verifyObjectSignature } from './signature';
 
-interface TxOptions {
+interface TxInfo {
   from: string;
   to: string;
   amount: string;
@@ -16,7 +16,7 @@ export class Tx {
   signature: string;
   hash: string;
 
-  constructor(options: TxOptions) {
+  constructor(options: TxInfo) {
     this.from = options.from;
     this.to = options.to;
     this.amount = options.amount;
@@ -24,28 +24,53 @@ export class Tx {
     this.hash = options.hash;
   }
 
-  sign(privateKey) {
+  sign(privateKey: string): void {
     this.signature = signObject(privateKey, {
       from: this.from,
       to: this.to,
-      amout: this.amount,
+      amount: this.amount,
     });
+
+    this.updateHash();
   }
 
-  verifySignature(publicKey) {
+  verifySignature(publicKey: string): boolean {
     return verifyObjectSignature(publicKey, this.signature, {
       from: this.from,
       to: this.to,
-      amout: this.amount,
+      amount: this.amount,
     });
   }
 
-  verifyHash() {
+  calculateHash(): string {
+    return objectHash({
+      from: this.from,
+      to: this.to,
+      amount: this.amount,
+      signature: this.signature,
+    });
+  }
+
+  updateHash(): void {
+    this.hash = this.calculateHash();
+  }
+
+  verifyHash(): boolean {
     return this.hash == objectHash({
       from: this.from,
       to: this.to,
-      amout: this.amount,
+      amount: this.amount,
       signature: this.signature,
     });
+  }
+
+  serialize(): TxInfo {
+    return {
+      from: this.from,
+      to: this.to,
+      amount: this.amount,
+      signature: this.signature,
+      hash: this.hash,
+    };
   }
 }
