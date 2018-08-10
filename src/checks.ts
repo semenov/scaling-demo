@@ -1,5 +1,5 @@
 
-const validators: Map<string, string[]> = new Map();
+export const validators: Map<string, string[]> = new Map();
 
 for (let i = 0; i < 100; i++) {
   const peerId = makePeerId(i);
@@ -29,6 +29,10 @@ function makePeerId(n: number): string {
 
 function parseId(stubId: string): number {
   return Number(stubId.match(/[0-9]+/));
+}
+
+export function getChainsList(): string[] {
+  return Array.from(validators.keys());
 }
 
 export function getChainValidators(chain: string): string[] {

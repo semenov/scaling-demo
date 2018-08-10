@@ -9,7 +9,8 @@
         "align": false,
         "no-increment-decrement": false,
         "triple-equals": false,
-        "no-invalid-this": true
+        "no-invalid-this": true,
+        "ter-arrow-parens": [true, "as-needed"]
     },
     "rulesDirectory": []
 }

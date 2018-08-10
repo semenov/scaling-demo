@@ -21,7 +21,6 @@ import { MessageType } from './peer';
           host: 'localhost',
           port: 7000 + i,
           seeds,
-          channels: (i % 5 != 0) ? [] : ['shard_3'],
         },
       });
     }
@@ -29,7 +28,7 @@ import { MessageType } from './peer';
 
     peers[1].broadcast({
       type: MessageType.Tx,
-      channel: 'shard_3',
+      channel: 'shard_0',
       data: {
         hash: 'abc',
       },

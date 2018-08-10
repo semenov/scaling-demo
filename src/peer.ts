@@ -13,7 +13,6 @@ export interface PeerOptions {
   seeds: HostInfo[];
   host: string;
   port: number;
-  channels: string[];
 }
 
 interface RemotePeer {
@@ -37,6 +36,9 @@ export enum MessageType {
   Tx = 'tx',
   Peers = 'peers',
   Greeting = 'greeting',
+  Block = 'block',
+  BlockProposal = 'block_proposal',
+  BlockVote = 'block_vote',
 }
 
 function decodeMessage(bufffer: Buffer): Message {
@@ -57,7 +59,7 @@ function sendMessage(socket: net.Socket, msg: Message) {
 
 function announcePeers(socket: net.Socket, peers: Map<string, RemotePeer>) {
   const peersList = [];
-  peers.forEach((peer) => {
+  peers.forEach(peer => {
     peersList.push({
       id: peer.id,
       host: peer.host,
@@ -109,19 +111,19 @@ export class Peer {
     this.host = options.host;
     this.port = options.port;
     this.peers = new Map();
-    this.channels = options.channels;
+    this.channels = [];
     this.processedMessages = new Set();
     this.events = new EventEmitter();
   }
 
   async start() {
-    this.server = net.createServer((socket) => {
+    this.server = net.createServer(socket => {
       this.log('New incoming connection');
       this.handleConnect(socket);
     });
 
     return new Promise((resolve, reject) => {
-      this.server.on('error', (e) => {
+      this.server.on('error', e => {
         reject(e);
       });
 
@@ -144,7 +146,7 @@ export class Peer {
         resolve();
       });
 
-      socket.on('error', (e) => {
+      socket.on('error', e => {
         reject(e);
       });
     });
@@ -155,7 +157,7 @@ export class Peer {
   }
 
   async handleStart() {
-    await Promise.all(this.seeds.map(async (seed) => {
+    await Promise.all(this.seeds.map(async seed => {
       try {
         await this.connect(seed.host, seed.port);
       } catch (e) {
@@ -177,7 +179,7 @@ export class Peer {
       input: socket,
     });
 
-    rl.on('line', async (data) => {
+    rl.on('line', async data => {
       try {
         const msg = decodeMessage(data);
 
@@ -233,7 +235,18 @@ export class Peer {
     }
   }
 
-  addListener(eventName: MessageType, handler: (msg: Message, broadcastFn?: BroadcastFn) => void) {
-    this.events.addListener(eventName, handler);
+  subscribeToChannel(channel: string) {
+    this.channels.push(channel);
+  }
+
+  unsubscribeFromChannel(channel: string) {
+    this.channels = this.channels.filter(item => item != channel);
+  }
+
+  addMessageListener(
+    messageType: MessageType,
+    handler: (msg: Message, broadcastFn?: BroadcastFn) => void,
+  ) {
+    this.events.addListener(messageType, handler);
   }
 }
