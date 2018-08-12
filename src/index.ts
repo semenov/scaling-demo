@@ -7,7 +7,7 @@ import { MessageType } from './peer';
     console.log('Starting servers');
 
     const peers = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 100; i++) {
       const seeds = (i == 0 ? [] : [{
         host: 'localhost',
         port: 7000,
@@ -18,7 +18,7 @@ import { MessageType } from './peer';
         isByzantine: false,
         peerOptions : {
           id: 'peer_' + String(i).padStart(3, '0'),
-          host: 'localhost',
+          host: '127.0.0.1',
           port: 7000 + i,
           seeds,
         },

@@ -10,7 +10,8 @@
         "no-increment-decrement": false,
         "triple-equals": false,
         "no-invalid-this": true,
-        "ter-arrow-parens": [true, "as-needed"]
+        "ter-arrow-parens": [true, "as-needed"],
+        "no-floating-promises": true
     },
     "rulesDirectory": []
 }
