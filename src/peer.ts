@@ -10,6 +10,7 @@ interface HostInfo {
 
 export interface PeerOptions {
   id: string;
+  isSeed: boolean;
   seeds: HostInfo[];
   host: string;
   port: number;
@@ -109,10 +110,18 @@ class RemotePeerStorage {
     this.channelLimit = options.channelLimit;
   }
 
-  add(remotePeer: RemotePeer): PeerAddResult {
+  hasPeer(peerId: string): boolean {
+    return this.peers.has(peerId);
+  }
+
+  addPeer(remotePeer: RemotePeer): PeerAddResult {
     let result = PeerAddResult.Rejected;
 
-    remotePeer.channels.forEach(channel => {
+    this.getChannels().forEach(channel => {
+      if (!remotePeer.channels.includes(channel)) {
+        return;
+      }
+
       let channelPeerIds = this.peerIdsByChannel.get(channel);
       if (!channelPeerIds) {
         channelPeerIds = [];
@@ -134,7 +143,7 @@ class RemotePeerStorage {
     return result;
   }
 
-  remove(peerId: string) {
+  removePeer(peerId: string) {
     this.peerIdsByChannel.forEach((peerIds, channel) => {
       const fileteredIds = peerIds.filter(id => id != peerId);
       this.peerIdsByChannel.set(channel, fileteredIds);
@@ -142,7 +151,7 @@ class RemotePeerStorage {
     this.peers.delete(peerId);
   }
 
-  getByChannel(channel: string): RemotePeer[] {
+  getPeersByChannel(channel: string): RemotePeer[] {
     const channelPeerIds = this.peerIdsByChannel.get(channel);
 
     if (!channelPeerIds) {
@@ -152,10 +161,17 @@ class RemotePeerStorage {
     return channelPeerIds.map(id => this.peers.get(id));
   }
 
-  getAll(): RemotePeer[] {
+  getAllPeers(): RemotePeer[] {
     return Array.from(this.peers.values());
   }
 
+  addChannel(channel: string) {
+    this.peerIdsByChannel.set(channel, []);
+  }
+
+  getChannels() {
+    return Array.from(this.peerIdsByChannel.keys());
+  }
 }
 
 function listenSocketMessages(
@@ -181,19 +197,19 @@ export class Peer {
   host: string;
   port: number;
   peers: RemotePeerStorage;
-  knownPeers: RemotePeerStorage;
   channels: string[];
   processedMessages: Set<string>;
   isByzantine: boolean;
+  isSeed: boolean;
   events: EventEmitter;
 
   constructor(options: PeerOptions) {
     this.id = options.id;
+    this.isSeed = options.isSeed;
     this.seeds = options.seeds;
     this.host = options.host;
     this.port = options.port;
     this.peers = new RemotePeerStorage({ channelLimit: 10 });
-    this.knownPeers = new RemotePeerStorage({ channelLimit: 100 });
     this.channels = [];
     this.processedMessages = new Set();
     this.events = new EventEmitter();
@@ -253,14 +269,18 @@ export class Peer {
   }
 
   private async handleConnect(socket: net.Socket) {
+    listenSocketMessages(socket, this.handleMessage);
+
     sendGreeting(socket, {
       peerId: this.id,
       channels: this.channels,
       host: this.host,
       port: this.port,
     });
-    announcePeers(socket, this.knownPeers.getAll());
-    listenSocketMessages(socket, this.handleMessage);
+
+    if (this.isSeed) {
+      announcePeers(socket, this.peers.getAllPeers());
+    }
   }
 
   private handleGreetingMessage = async (msg: Message, socket: net.Socket) => {
@@ -272,28 +292,21 @@ export class Peer {
       port: msg.data.port,
       socket,
     };
-    this.knownPeers.add(remotePeer);
-    const addResult = this.peers.add(remotePeer);
-    this.log({ addResult });
+    const addResult = this.peers.addPeer(remotePeer);
 
     if (addResult == PeerAddResult.Rejected) {
-      this.log('GOING TO DESTROY');
       socket.destroy();
     }
 
     socket.on('close', () => {
-      this.log('Connection closed');
-      this.peers.remove(peerId);
+      this.peers.removePeer(peerId);
     });
   }
 
   private handlePeersMessage = async (msg: Message) => {
     for (const peer of msg.data.peers) {
-      this.knownPeers.add(peer);
       if (peer.id != this.id) {
-        const addResult = this.peers.add(peer);
-
-        if (addResult == PeerAddResult.Added) {
+        if (!this.peers.hasPeer(peer.id)) {
           await this.connect(peer.host, peer.port);
         }
       }
@@ -301,13 +314,15 @@ export class Peer {
   }
 
   private handleMessage = async (msg: Message, socket: net.Socket) => {
-    // this.log('Message handler', msg);
+    this.log('Message handler', msg);
 
     this.events.emit(msg.type, msg, socket);
 
   }
   async broadcast(msg: Message) {
-    const peers = msg.channel ? this.peers.getByChannel(msg.channel) : this.peers.getAll();
+    const channel = msg.channel;
+    this.log({ channel });
+    const peers = channel ? this.peers.getPeersByChannel(channel) : this.peers.getAllPeers();
     for (const remotePeer of peers) {
       if (msg.senderId != remotePeer.id) {
         sendMessage(remotePeer.socket, { ...msg, senderId: this.id });
@@ -317,6 +332,7 @@ export class Peer {
 
   subscribeToChannel(channel: string) {
     this.channels.push(channel);
+    this.peers.addChannel(channel);
   }
 
   unsubscribeFromChannel(channel: string) {

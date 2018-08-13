@@ -8,6 +8,7 @@ import { MessageType } from './peer';
 
     const peers = [];
     for (let i = 0; i < 100; i++) {
+      const isSeed = (i == 0);
       const seeds = (i == 0 ? [] : [{
         host: 'localhost',
         port: 7000,
@@ -20,15 +21,16 @@ import { MessageType } from './peer';
           id: 'peer_' + String(i).padStart(3, '0'),
           host: '127.0.0.1',
           port: 7000 + i,
+          isSeed,
           seeds,
         },
       });
     }
     await sleep(1000);
 
-    peers[1].broadcast({
+    peers[20].broadcast({
       type: MessageType.Tx,
-      channel: 'shard_0',
+      channel: 'basechain',
       data: {
         hash: 'abc',
       },
