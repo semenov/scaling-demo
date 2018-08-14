@@ -1,12 +1,13 @@
 import * as sleep from 'sleep-promise';
 import { createNode } from './node';
-import { MessageType } from './peer';
+import { Peer } from './peer';
+import { MessageType } from './message';
 
 (async () => {
   try {
     console.log('Starting servers');
 
-    const peers = [];
+    const peers: Peer[] = [];
     for (let i = 0; i < 100; i++) {
       const isSeed = (i == 0);
       const seeds = (i == 0 ? [] : [{
@@ -28,9 +29,9 @@ import { MessageType } from './peer';
     }
     await sleep(1000);
 
-    peers[20].broadcast({
+    peers[10].broadcast({
       type: MessageType.Tx,
-      channel: 'basechain',
+      channel: 'shard_1',
       data: {
         hash: 'abc',
       },

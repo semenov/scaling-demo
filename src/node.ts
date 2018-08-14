@@ -1,6 +1,7 @@
 import * as lowdb from 'lowdb';
 import * as FileAsync from 'lowdb/adapters/FileAsync';
-import { Peer, PeerOptions, MessageType } from './peer';
+import { Peer, PeerOptions } from './peer';
+import { MessageType } from './message';
 import { Block } from './block';
 import { getChainsList, isChainValidator, isSlotLeader } from './checks';
 
