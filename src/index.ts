@@ -9,7 +9,6 @@ async function connectToPeers(peer: Peer) {
   for (const chain of chains) {
     const id = getChainLeader(chain);
     if (id != peer.id) {
-      console.log(peer.id, `await peer.connectPeer('localhost', ${7000 + id})`);
       await peer.connectPeer('localhost', 7000 + id);
     }
   }
@@ -34,10 +33,6 @@ async function connectToPeers(peer: Peer) {
       peers[i] = peer;
     }
     await sleep(1000);
-
-    for (let i = 0; i < 100; i++) {
-      console.log({ id: i, peersNumer: peers[i].peers.length });
-    }
 
     await peers[11].broadcast({
       type: MessageType.Tx,

@@ -21,8 +21,6 @@ for (let i = 0; i < 100; i++) {
   validators.get(shard).push(peerId);
 }
 
-console.log(validators);
-
 export function getChainsList(): string[] {
   return Array.from(validators.keys());
 }
