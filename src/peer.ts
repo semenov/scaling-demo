@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { EventEmitter } from 'events';
 import { RemotePeerStorage, PeerAddResult, RemotePeer } from './remote-peer-storage';
 import { Message, MessageType, sendMessage, listenMessages } from './message';
+import { validateSchema } from './validation';
+import { greetingSchema, peersSchema, messageSchema } from './schema';
 
 interface HostInfo {
   host: string;
@@ -77,6 +79,8 @@ function connectPeer(host: string, port: number): Promise<net.Socket> {
   });
 }
 
+type MessageHandler = (msg: Message, socket: net.Socket) => void;
+
 export interface PeerOptions {
   id: string;
   isSeed: boolean;
@@ -96,7 +100,7 @@ export class Peer {
   processedMessages: Set<string>;
   isByzantine: boolean;
   isSeed: boolean;
-  events: EventEmitter;
+  messageHandlers: Map<MessageType, MessageHandler>;
 
   constructor(options: PeerOptions) {
     this.id = options.id;
@@ -107,10 +111,10 @@ export class Peer {
     this.peers = new RemotePeerStorage({ channelLimit: 10 });
     this.channels = [];
     this.processedMessages = new Set();
-    this.events = new EventEmitter();
+    this.messageHandlers = new Map();
 
-    this.addMessageListener(MessageType.Greeting, this.handleGreetingMessage);
-    this.addMessageListener(MessageType.Peers, this.handlePeersMessage);
+    this.setMessageHandler(MessageType.Greeting, this.handleGreetingMessage);
+    this.setMessageHandler(MessageType.Peers, this.handlePeersMessage);
   }
 
   async start() {
@@ -153,6 +157,8 @@ export class Peer {
   }
 
   private handleGreetingMessage = async (msg: Message, socket: net.Socket) => {
+    // validateSchema(greetingSchema, msg.data);
+
     const peerId = msg.data.peerId;
     const remotePeer = {
       id: peerId,
@@ -173,6 +179,8 @@ export class Peer {
   }
 
   private handlePeersMessage = async (msg: Message) => {
+    // validateSchema(peersSchema, msg.data);
+
     for (const peer of msg.data.peers) {
       if (peer.id != this.id) {
         if (!this.peers.hasPeer(peer.id)) {
@@ -184,9 +192,11 @@ export class Peer {
 
   private handleMessage = async (msg: Message, socket: net.Socket) => {
     this.log('Message handler', msg);
+    const messageHandler = this.messageHandlers.get(msg.type as MessageType);
 
-    this.events.emit(msg.type, msg, socket);
-
+    if (messageHandler) {
+      await messageHandler(msg, socket);
+    }
   }
 
   async broadcast(msg: Message) {
@@ -209,10 +219,7 @@ export class Peer {
     this.channels = this.channels.filter(item => item != channel);
   }
 
-  addMessageListener(
-    messageType: MessageType,
-    handler: (msg: Message, socket: net.Socket) => void,
-  ) {
-    this.events.addListener(messageType, handler);
+  setMessageHandler(messageType: MessageType, handler: MessageHandler) {
+    this.messageHandlers.set(messageType, handler);
   }
 }

@@ -1,5 +1,7 @@
 import { Socket } from 'net';
 import * as readline from 'readline';
+import { validateSchema } from './validation';
+import { messageSchema } from './schema';
 
 export interface Message {
   senderId?: string;
@@ -26,6 +28,7 @@ function encodeMessage(msg: Message): string {
 }
 
 export function sendMessage(socket: Socket, msg: Message) {
+  validateSchema(messageSchema, msg);
   socket.write(encodeMessage(msg) + '\n');
 }
 
@@ -35,10 +38,11 @@ export function listenMessages(
 ): void {
   const rl = readline.createInterface({ input: socket });
 
-  rl.on('line', data => {
+  rl.on('line', async data => {
     try {
       const msg = decodeMessage(data);
-      handler(msg, socket);
+      validateSchema(messageSchema, msg);
+      await handler(msg, socket);
     } catch (e) {
       console.error(e);
     }

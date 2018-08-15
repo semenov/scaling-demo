@@ -30,7 +30,7 @@ export async function createNode(options: NodeOptions): Promise<Peer> {
   const pendingTransactions = new Map();
   const blocks = new Map();
 
-  peer.addMessageListener(MessageType.Tx, msg => {
+  peer.setMessageHandler(MessageType.Tx, msg => {
     const isNewTx = !pendingTransactions.has(msg.data.hash);
     if (isNewTx) {
       pendingTransactions.set(msg.data.hash, msg.data);
@@ -38,7 +38,7 @@ export async function createNode(options: NodeOptions): Promise<Peer> {
     }
   });
 
-  peer.addMessageListener(MessageType.BlockProposal, msg => {
+  peer.setMessageHandler(MessageType.BlockProposal, msg => {
     const block = new Block(msg.data);
     const chain = block.header.chain;
     const isNewTx = !pendingTransactions.has(msg.data.hash);
