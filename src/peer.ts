@@ -122,19 +122,27 @@ export class Peer {
     await this.connectToSeeds();
   }
 
-  async connect(host: string, port: number): Promise<void> {
+  async connectSeed(host: string, port: number): Promise<void> {
     const socket = await connectPeer(host, port);
     await this.handleConnect(socket);
   }
 
+  async connectPeer(peer: RemotePeer): Promise<void> {
+    this.peers.addPeer(peer);
+    const socket = await connectPeer(peer.host, peer.port);
+    await this.handleConnect(socket);
+  }
+
   log(...params) {
+    if (this.id !== 'peer_099') return;
+
     console.log(chalk.cyan(`[${this.id}]`), ...params);
   }
 
   private async connectToSeeds(): Promise<void> {
     for (const seed of this.seeds) {
       try {
-        await this.connect(seed.host, seed.port);
+        await this.connectSeed(seed.host, seed.port);
       } catch (e) {
         console.error('Failed to connect to seed', seed);
       }
@@ -183,8 +191,9 @@ export class Peer {
 
     for (const peer of msg.data.peers) {
       if (peer.id != this.id) {
+        // This check is broken
         if (!this.peers.hasPeer(peer.id)) {
-          await this.connect(peer.host, peer.port);
+          await this.connectPeer(peer);
         }
       }
     }

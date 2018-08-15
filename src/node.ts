@@ -20,7 +20,7 @@ export async function createNode(options: NodeOptions): Promise<Peer> {
 
   const peer = new Peer(options.peerOptions);
   getChainsList().forEach(chain => {
-    if (isChainValidator(chain, peer.id)) {
+    if (isChainValidator(chain, peer.id) || options.peerOptions.id == 'peer_000') {
       peer.subscribeToChannel(chain);
     }
   });

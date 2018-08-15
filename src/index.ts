@@ -29,14 +29,15 @@ import { MessageType } from './message';
     }
     await sleep(1000);
 
-    peers[10].broadcast({
+    await peers[10].broadcast({
       type: MessageType.Tx,
-      channel: 'shard_1',
+      channel: 'basechain',
       data: {
         hash: 'abc',
       },
     });
 
+    console.log(peers[10].peers);
     console.log('Ready');
   } catch (e) {
     console.error('Error!:', e);

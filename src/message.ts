@@ -29,7 +29,9 @@ function encodeMessage(msg: Message): string {
 
 export function sendMessage(socket: Socket, msg: Message) {
   validateSchema(messageSchema, msg);
-  socket.write(encodeMessage(msg) + '\n');
+  if (socket) {
+    socket.write(encodeMessage(msg) + '\n');
+  }
 }
 
 export function listenMessages(

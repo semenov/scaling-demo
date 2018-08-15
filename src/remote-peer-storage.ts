@@ -1,9 +1,5 @@
 import * as net from 'net';
 
-interface RemotePeerOptions {
-  channelLimit: number;
-}
-
 type PeerMap = Map<string, RemotePeer>;
 
 export enum PeerAddResult {
@@ -17,18 +13,22 @@ export interface RemotePeer {
   channels: string[];
   host: string;
   port: number;
-  socket: net.Socket;
+  socket?: net.Socket;
+}
+
+interface RemotePeerOptions {
+  channelLimit: number;
 }
 
 export class RemotePeerStorage {
   peers: PeerMap;
   peerIdsByChannel: Map<string, string[]>;
-  channelLimit: number;
+  channelPeerLimit: number;
 
   constructor(options: RemotePeerOptions) {
     this.peers = new Map();
     this.peerIdsByChannel = new Map();
-    this.channelLimit = options.channelLimit;
+    this.channelPeerLimit = options.channelLimit;
   }
 
   hasPeer(peerId: string): boolean {
@@ -52,7 +52,7 @@ export class RemotePeerStorage {
       if (channelPeerIds.includes(remotePeer.id)) {
         result = PeerAddResult.Updated;
         this.peers.set(remotePeer.id, remotePeer);
-      } else if (channelPeerIds.length < this.channelLimit) {
+      } else if (channelPeerIds.length < this.channelPeerLimit) {
         if (result != PeerAddResult.Updated) {
           result = PeerAddResult.Added;
         }
