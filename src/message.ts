@@ -4,16 +4,13 @@ import { validateSchema } from './validation';
 import { messageSchema } from './schema';
 
 export interface Message {
-  senderId?: string;
-  channel?: string;
+  channel: string;
   type: string;
   data: any;
 }
 
 export enum MessageType {
   Tx = 'tx',
-  Peers = 'peers',
-  Greeting = 'greeting',
   Block = 'block',
   BlockProposal = 'block_proposal',
   BlockVote = 'block_vote',

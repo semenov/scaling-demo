@@ -3,24 +3,17 @@ import * as FileAsync from 'lowdb/adapters/FileAsync';
 import { Peer, PeerOptions } from './peer';
 import { MessageType } from './message';
 import { Block } from './block';
-import { getChainsList, isChainValidator, isSlotLeader } from './checks';
+import { getChainsList, isChainValidator, isSlotLeader } from './authority';
 
 interface NodeOptions {
-  dbFilename: string;
-  isByzantine: boolean;
   peerOptions: PeerOptions;
 }
 
 export async function createNode(options: NodeOptions): Promise<Peer> {
-  // For testing puposes we temporarily don't use persisctence layer
-  // const dbFilename = options.dbFilename;
-  // const adapter = new FileAsync(dbFilename);
-  // const db = await lowdb(adapter);
-  // await db.defaults({ blocks: [] }).write();
 
   const peer = new Peer(options.peerOptions);
   getChainsList().forEach(chain => {
-    if (isChainValidator(chain, peer.id) || options.peerOptions.id == 'peer_000') {
+    if (isChainValidator(chain, peer.id)) {
       peer.subscribeToChannel(chain);
     }
   });
