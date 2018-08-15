@@ -1,6 +1,7 @@
 import * as net from 'net';
 import chalk from 'chalk';
 import { Message, MessageType, sendMessage, listenMessages } from './message';
+import * as objectHash from 'object-hash';
 
 function startServer(
   host: string,
@@ -54,6 +55,7 @@ export class Peer {
   isByzantine: boolean;
   isSeed: boolean;
   messageHandlers: Map<MessageType, MessageHandler>;
+  knownMessages: Map<net.Socket, string[]>;
 
   constructor(options: PeerOptions) {
     this.id = options.id;
@@ -62,6 +64,7 @@ export class Peer {
     this.peers = [];
     this.channels = [];
     this.messageHandlers = new Map();
+    this.knownMessages = new Map();
   }
 
   async start() {
@@ -79,6 +82,7 @@ export class Peer {
 
   private handleConnect = async (socket: net.Socket) => {
     this.peers.push(socket);
+    this.knownMessages.set(socket, []);
     listenMessages(socket, this.handleMessage);
   }
 
@@ -90,13 +94,33 @@ export class Peer {
     const messageHandler = this.messageHandlers.get(msg.type as MessageType);
 
     if (messageHandler) {
+      this.addKnownMessage(msg, socket);
       await messageHandler(msg, socket);
     }
   }
 
+  addKnownMessage(msg: Message, socket: net.Socket): void {
+    const hash = objectHash(msg);
+    const list = this.knownMessages.get(socket);
+    if (list.length >= 100) {
+      list.shift();
+    }
+
+    list.push(hash);
+  }
+
+  isKnownMessage(msg: Message, socket: net.Socket) {
+    const hash = objectHash(msg);
+    const list = this.knownMessages.get(socket);
+
+    return list.includes(hash);
+  }
+
   async broadcast(msg: Message) {
     for (const socket of this.peers) {
-      sendMessage(socket, msg);
+      if (!this.isKnownMessage(msg, socket)) {
+        sendMessage(socket, msg);
+      }
     }
   }
 
