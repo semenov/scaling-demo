@@ -1,5 +1,6 @@
 import { Tx, TxInfo } from './tx';
 import { signObject, verifyObjectSignature } from './signature';
+import * as objectHash from 'object-hash';
 
 function getPublicKeyFromPrivatekey(privateKey: string): string {
   // We use same private and public key for debug purposes
@@ -53,6 +54,20 @@ export class Block {
         signature,
       });
     }
+
+    this.updateHash();
+  }
+
+  calculateHash(): string {
+    return objectHash({
+      header: this.header,
+      body: this.body,
+      signatures: this.signatures,
+    });
+  }
+
+  updateHash(): void {
+    this.hash = this.calculateHash();
   }
 
   serialize() {
