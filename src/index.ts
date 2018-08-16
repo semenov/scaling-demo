@@ -1,5 +1,5 @@
 import * as sleep from 'sleep-promise';
-import { Node } from './node';
+import { ShardNode } from './shard-node';
 import { Peer } from './peer';
 import { MessageType } from './message';
 import { getChainLeader, getChainsByNodeId } from './authority';
@@ -22,7 +22,7 @@ async function connectToPeers(peer: Peer) {
 
     const peers: Peer[] = [];
     for (let i = 0; i < 100; i++) {
-      const node = new Node({
+      const node = new ShardNode({
         peerOptions : {
           id: i,
           host: '127.0.0.1',

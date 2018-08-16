@@ -4,13 +4,13 @@ export const validators: Map<string, number[]> = new Map();
 for (let i = 0; i < 100; i++) {
   const peerId = i;
 
-  if (i % 10 == 0) {
-    if (!validators.has('basechain')) {
-      validators.set('basechain', []);
-    }
+  // if (i % 10 == 0) {
+  //   if (!validators.has('basechain')) {
+  //     validators.set('basechain', []);
+  //   }
 
-    validators.get('basechain').push(peerId);
-  }
+  //   validators.get('basechain').push(peerId);
+  // }
 
   const shardNumber = Math.floor(i / 10);
   const shard = 'shard_' + shardNumber;
@@ -36,9 +36,9 @@ export function getChainLeader(chain: string): number {
 export function getChainsByNodeId(id: number): string[] {
   const chains = [];
 
-  if (id % 10 == 0) {
-    chains.push('basechain');
-  }
+  // if (id % 10 == 0) {
+  //   chains.push('basechain');
+  // }
 
   const shardNumber = Math.floor(id / 10);
   const shard = 'shard_' + shardNumber;

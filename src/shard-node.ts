@@ -8,16 +8,20 @@ import { txSchema, blockSchema } from './schema';
 import { validateSchema } from './validation';
 import { Tx } from './tx';
 import { AccountStorage } from './account-storage';
+import * as sleep from 'sleep-promise';
+import { blockTime } from './config';
 
 interface NodeOptions {
   peerOptions: PeerOptions;
 }
 
-export class Node {
+export class ShardNode {
   peer: Peer;
   pendingTransactions: Map<string, Tx>;
   blocks: Map<string, Block>;
   accounts: AccountStorage;
+  isLeader: boolean;
+  chain: string;
 
   constructor(options: NodeOptions) {
     this.peer = new Peer(options.peerOptions);
@@ -28,6 +32,8 @@ export class Node {
     getChainsList().forEach(chain => {
       if (isChainValidator(chain, this.peer.id)) {
         this.peer.subscribeToChannel(chain);
+        this.chain = chain;
+        this.isLeader = isSlotLeader(chain, this.peer.id);
       }
     });
 
@@ -38,6 +44,35 @@ export class Node {
 
   async start() {
     await this.peer.start();
+    this.startBlockProduction();
+  }
+
+  async startBlockProduction() {
+    while (true) {
+      await sleep(blockTime);
+      if (this.isLeader) {
+        this.proposeBlock();
+      }
+    }
+  }
+
+  proposeBlock() {
+    const block = new Block({
+      header: {
+        parentBlockHash: '',
+        height: 1,
+        timestamp: Date.now(),
+        chain: this.chain,
+      },
+      body: {
+        txs: [],
+      },
+      signatures: [],
+    });
+
+    this.pendingTransactions.forEach(tx => {
+
+    });
   }
 
   private txHandler = async msg => {
