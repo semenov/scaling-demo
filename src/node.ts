@@ -7,6 +7,7 @@ import { getChainsList, isChainValidator, isSlotLeader } from './authority';
 import { txSchema, blockSchema } from './schema';
 import { validateSchema } from './validation';
 import { Tx } from './tx';
+import { AccountStorage } from './account-storage';
 
 interface NodeOptions {
   peerOptions: PeerOptions;
@@ -16,11 +17,13 @@ export class Node {
   peer: Peer;
   pendingTransactions: Map<string, Tx>;
   blocks: Map<string, Block>;
+  accounts: AccountStorage;
 
   constructor(options: NodeOptions) {
     this.peer = new Peer(options.peerOptions);
     this.pendingTransactions =  new Map();
     this.blocks = new Map();
+    this.accounts = new AccountStorage();
 
     getChainsList().forEach(chain => {
       if (isChainValidator(chain, this.peer.id)) {
