@@ -12,47 +12,56 @@ interface NodeOptions {
   peerOptions: PeerOptions;
 }
 
-export async function createNode(options: NodeOptions): Promise<Peer> {
+export class Node {
+  peer: Peer;
+  pendingTransactions: Map<string, Tx>;
+  blocks: Map<string, Block>;
 
-  const peer = new Peer(options.peerOptions);
-  getChainsList().forEach(chain => {
-    if (isChainValidator(chain, peer.id)) {
-      peer.subscribeToChannel(chain);
-    }
-  });
+  constructor(options: NodeOptions) {
+    this.peer = new Peer(options.peerOptions);
+    this.pendingTransactions =  new Map();
+    this.blocks = new Map();
 
-  await peer.start();
+    getChainsList().forEach(chain => {
+      if (isChainValidator(chain, this.peer.id)) {
+        this.peer.subscribeToChannel(chain);
+      }
+    });
 
-  const pendingTransactions: Map<string, Tx> = new Map();
-  const blocks = new Map();
+    this.peer.setMessageHandler(MessageType.Tx, this.txHandler);
+    this.peer.setMessageHandler(MessageType.BlockProposal, this.blockProposalHandler);
+    this.peer.setMessageHandler(MessageType.Block, this.blockHandler);
+  }
 
-  peer.setMessageHandler(MessageType.Tx, msg => {
+  async start() {
+    await this.peer.start();
+  }
+
+  private txHandler = async msg => {
     validateSchema(txSchema, msg.data);
     const tx = new Tx(msg.data);
 
-    if (pendingTransactions.has(tx.hash)) return;
+    if (this.pendingTransactions.has(tx.hash)) return;
 
     if (tx.verifySignature(tx.from) && tx.verifyHash()) {
-      pendingTransactions.set(tx.hash, tx);
-      peer.broadcast(msg);
+      this.pendingTransactions.set(tx.hash, tx);
+      this.peer.broadcast(msg);
     }
-  });
+  }
 
-  peer.setMessageHandler(MessageType.BlockProposal, msg => {
+  private blockProposalHandler = msg => {
     validateSchema(blockSchema, msg.data);
     const block = new Block(msg.data);
     const chain = block.header.chain;
 
-    peer.broadcast(msg);
-  });
+    this.peer.broadcast(msg);
+  }
 
-  peer.setMessageHandler(MessageType.Block, msg => {
+  private blockHandler = msg => {
     validateSchema(blockSchema, msg.data);
     const block = new Block(msg.data);
     const chain = block.header.chain;
 
-    peer.broadcast(msg);
-  });
-
-  return peer;
+    this.peer.broadcast(msg);
+  }
 }

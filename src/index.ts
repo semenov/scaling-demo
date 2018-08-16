@@ -1,5 +1,5 @@
 import * as sleep from 'sleep-promise';
-import { createNode } from './node';
+import { Node } from './node';
 import { Peer } from './peer';
 import { MessageType } from './message';
 import { getChainLeader, getChainsByNodeId } from './authority';
@@ -22,7 +22,7 @@ async function connectToPeers(peer: Peer) {
 
     const peers: Peer[] = [];
     for (let i = 0; i < 100; i++) {
-      const peer = await createNode({
+      const node = new Node({
         peerOptions : {
           id: i,
           host: '127.0.0.1',
@@ -30,9 +30,10 @@ async function connectToPeers(peer: Peer) {
         },
       });
 
-      await connectToPeers(peer);
+      await node.start();
+      await connectToPeers(node.peer);
 
-      peers[i] = peer;
+      peers[i] = node.peer;
     }
     await sleep(1000);
 
