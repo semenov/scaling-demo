@@ -3,6 +3,8 @@ import { createNode } from './node';
 import { Peer } from './peer';
 import { MessageType } from './message';
 import { getChainLeader, getChainsByNodeId } from './authority';
+import { Tx } from './tx';
+import { Block } from './block';
 
 async function connectToPeers(peer: Peer) {
   const chains = getChainsByNodeId(peer.id);
@@ -34,12 +36,39 @@ async function connectToPeers(peer: Peer) {
     }
     await sleep(1000);
 
-    await peers[11].broadcast({
-      type: MessageType.Tx,
-      channel: 'shard_1',
-      data: {
-        hash: 'abc',
+    const tx = new Tx({
+      from: 'Alice',
+      to: 'Bob',
+      amount: '100',
+    });
+
+    tx.sign('Alice');
+
+    // await peers[1].broadcast({
+    //   type: MessageType.Tx,
+    //   channel: 'shard_0',
+    //   data: tx.serialize(),
+    // });
+
+    const block = new Block({
+      header: {
+        parentBlockHash: '',
+        height: 1,
+        timestamp: Date.now(),
+        chain: 'shard_0',
       },
+      body: {
+        txs: [tx.serialize()],
+      },
+      signatures: [],
+    });
+
+    block.sign('validator1');
+
+    await peers[1].broadcast({
+      type: MessageType.Block,
+      channel: 'shard_0',
+      data: block.serialize(),
     });
 
     console.log('Ready');

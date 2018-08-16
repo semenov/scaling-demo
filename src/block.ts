@@ -1,4 +1,4 @@
-import { Tx } from './tx';
+import { Tx, TxInfo } from './tx';
 import { signObject, verifyObjectSignature } from './signature';
 
 function getPublicKeyFromPrivatekey(privateKey: string): string {
@@ -15,16 +15,17 @@ interface BlockInfo {
   header: BlockHeader;
   body: BlockBody;
   signatures: SignatureInfo[];
-  hash: string;
+  hash?: string;
 }
 
 interface BlockHeader {
   chain: string;
   timestamp: number;
   height: number;
+  parentBlockHash: string;
 }
 interface BlockBody {
-  txs: Tx[];
+  txs: TxInfo[];
 }
 
 export class Block {

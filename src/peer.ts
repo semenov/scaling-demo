@@ -99,7 +99,7 @@ export class Peer {
     }
   }
 
-  addKnownMessage(msg: Message, socket: net.Socket): void {
+  private addKnownMessage(msg: Message, socket: net.Socket): void {
     const hash = objectHash(msg);
     const list = this.knownMessages.get(socket);
     if (list.length >= 100) {
@@ -109,7 +109,7 @@ export class Peer {
     list.push(hash);
   }
 
-  isKnownMessage(msg: Message, socket: net.Socket) {
+  private isKnownMessage(msg: Message, socket: net.Socket) {
     const hash = objectHash(msg);
     const list = this.knownMessages.get(socket);
 

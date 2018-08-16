@@ -1,12 +1,12 @@
 import * as objectHash from 'object-hash';
 import { signObject, verifyObjectSignature } from './signature';
 
-interface TxInfo {
+export interface TxInfo {
   from: string;
   to: string;
   amount: string;
-  signature: string;
-  hash: string;
+  signature?: string;
+  hash?: string;
 }
 
 export class Tx {

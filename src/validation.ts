@@ -12,7 +12,8 @@ class ValidationError extends Error {
 export function validateSchema(schema: object, object: object): void {
   const ajv = new Ajv();
   const validationResult = ajv.validate(schema, object) as boolean;
+
   if (!validationResult) {
-    throw new ValidationError(ajv.errorsText, ajv.errors);
+    throw new ValidationError(ajv.errorsText(), ajv.errors);
   }
 }
