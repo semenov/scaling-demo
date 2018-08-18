@@ -65,34 +65,11 @@ export const blockSchema = {
   required: ['header', 'body', 'signatures', 'hash'],
 };
 
-export const greetingSchema = {
-  peerId: { type: 'string' },
-  channels: {
-    type: 'array',
-    items: {
-      type: 'string',
-    },
+export const blockVoteSchema = {
+  type: 'object',
+  properties: {
+    blockProposalHash: { type: 'string' },
+    signature: { type: 'string' },
   },
-  host: { type: 'string' },
-  port: { type: 'number' },
+  required: ['blockProposalHash', 'signature'],
 };
-
-// export const peersSchema = {
-//   peers: {
-//     type: 'array',
-//     items: {
-//       type: 'object',
-//       properties: {
-//         id: { type: 'string' },
-//         host: { type: 'string' },
-//         port: { type: 'number' },
-//         channels: {
-//           type: 'array',
-//           items: {
-//             type: 'string',
-//           },
-//         },
-//       },
-//     },
-//   },
-// };

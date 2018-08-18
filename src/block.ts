@@ -39,9 +39,10 @@ export class Block {
     this.header = options.header;
     this.body = options.body;
     this.signatures = options.signatures;
+    this.hash = options.hash;
   }
 
-  sign(privateKey: string) {
+  sign(privateKey: string): string {
     const publicKey = getPublicKeyFromPrivatekey(privateKey);
     const signature = signObject(privateKey, {
       header: this.header,
@@ -56,6 +57,8 @@ export class Block {
     }
 
     this.updateHash();
+
+    return signature;
   }
 
   calculateHash(): string {
