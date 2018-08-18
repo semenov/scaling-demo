@@ -9,7 +9,8 @@ import { validateSchema } from './validation';
 import { Tx } from './tx';
 import { AccountStorage } from './account-storage';
 import * as sleep from 'sleep-promise';
-import { blockTime } from './config';
+import { blockTime, blockSize } from './config';
+import * as bigInt from 'big-integer';
 
 interface NodeOptions {
   peerOptions: PeerOptions;
@@ -70,8 +71,21 @@ export class ShardNode {
       signatures: [],
     });
 
-    this.pendingTransactions.forEach(tx => {
+    for (const [hash, tx] of this.pendingTransactions) {
+      if (block.body.txs.length >= blockSize) break;
 
+      const txAllowed = this.accounts.checkTransaction(tx.from, bigInt(tx.amount));
+      if (txAllowed) {
+        block.body.txs.push(tx.serialize());
+      }
+    }
+
+    block.sign(String(this.peer.id));
+
+    this.peer.broadcast({
+      type: MessageType.BlockProposal,
+      channel: this.chain,
+      data: block.serialize(),
     });
   }
 
