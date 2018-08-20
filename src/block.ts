@@ -25,7 +25,7 @@ interface BlockHeader {
   height: number;
   parentBlockHash: string;
 }
-interface BlockBody {
+export interface BlockBody {
   txs: TxInfo[];
 }
 

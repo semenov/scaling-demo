@@ -21,7 +21,7 @@ async function connectToPeers(peer: Peer) {
     console.log('Starting servers');
 
     const peers: Peer[] = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
       const node = new ShardNode({
         peerOptions : {
           id: i,

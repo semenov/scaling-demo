@@ -2,7 +2,7 @@ import * as lowdb from 'lowdb';
 import * as FileAsync from 'lowdb/adapters/FileAsync';
 import { Peer, PeerOptions } from './peer';
 import { MessageType } from './message';
-import { Block } from './block';
+import { Block, BlockBody } from './block';
 import { getChainsList, isChainValidator, isSlotLeader, getChainValidators } from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
 import { validateSchema } from './validation';
@@ -12,9 +12,10 @@ import * as sleep from 'sleep-promise';
 import { blockTime, blockSize } from './config';
 import * as bigInt from 'big-integer';
 import { verifyObjectSignature } from './signature';
+import { BlockStorage } from './block-storage';
 
 function getKeyByID(id: number): string {
-  return 'shard_' + id;
+  return 'peer_' + id;
 }
 
 interface NodeOptions {
@@ -24,18 +25,20 @@ interface NodeOptions {
 export class ShardNode {
   peer: Peer;
   pendingTransactions: Map<string, Tx>;
-  blocks: Map<string, Block>;
+  blocks: BlockStorage;
+  proposedBlockInitialHash?: string;
+  proposedBlock?: Block;
   accounts: AccountStorage;
   isLeader: boolean;
   chain: string;
-  blockProposals: Map<string, Block>;
 
   constructor(options: NodeOptions) {
     this.peer = new Peer(options.peerOptions);
     this.pendingTransactions =  new Map();
-    this.blocks = new Map();
+    this.blocks = new BlockStorage({
+      blockBodyHandler: this.blockBodyHandler,
+    });
     this.accounts = new AccountStorage();
-    this.blockProposals = new Map();
 
     getChainsList().forEach(chain => {
       if (isChainValidator(chain, this.peer.id)) {
@@ -61,6 +64,9 @@ export class ShardNode {
     while (true) {
       await sleep(blockTime);
       if (this.isLeader) {
+        while (this.proposedBlock) {
+          await sleep(100);
+        }
         this.proposeBlock();
       }
     }
@@ -79,13 +85,18 @@ export class ShardNode {
       },
       signatures: [],
     });
+
+    block.updateHash();
+
+    this.blocks.add(block);
   }
 
   proposeBlock() {
+    const lastBlock = this.blocks.getLast();
     const block = new Block({
       header: {
-        parentBlockHash: '',
-        height: 1,
+        parentBlockHash: lastBlock.hash,
+        height: lastBlock.header.height + 1,
         timestamp: Date.now(),
         chain: this.chain,
       },
@@ -106,13 +117,23 @@ export class ShardNode {
 
     block.sign(getKeyByID(this.peer.id));
 
-    this.blockProposals.set(block.hash, block);
+    this.proposedBlock = block;
+    this.proposedBlockInitialHash = block.hash;
 
     this.peer.broadcast({
       type: MessageType.BlockProposal,
       channel: this.chain,
       data: block.serialize(),
     });
+  }
+
+  private blockBodyHandler = (blockBody: BlockBody): boolean => {
+    for (const txData of blockBody.txs) {
+      const tx = new Tx(txData);
+      this.accounts.transact(tx.from, tx.to, bigInt(tx.amount));
+    }
+
+    return true;
   }
 
   private txHandler = async msg => {
@@ -170,9 +191,9 @@ export class ShardNode {
 
     if (!this.isLeader) return;
 
-    const block = this.blockProposals.get(blockProposalHash);
+    const block = this.proposedBlock;
 
-    if (!block) return;
+    if (!block || this.proposedBlockInitialHash != blockProposalHash) return;
 
     const validSignature = block.validateSignature(signature);
 
@@ -189,6 +210,11 @@ export class ShardNode {
     const canCommit = isSignedByAll || (hasTimeouted && isSignedByTwoThirds);
 
     if (canCommit) {
+      this.proposedBlock = undefined;
+      this.proposedBlockInitialHash = undefined;
+
+      this.blocks.add(block);
+
       this.peer.broadcast({
         type: MessageType.Block,
         channel: this.chain,
@@ -202,12 +228,10 @@ export class ShardNode {
     this.peer.broadcast(msg);
 
     const block = new Block(msg.data);
-    if (this.checkBlock(block)) {
-      this.blocks.set(block.hash, block);
-      for (const txData of block.body.txs) {
-        const tx = new Tx(txData);
-        this.accounts.transact(tx.from, tx.to, bigInt(tx.amount));
-      }
+    const isNewBlock = !this.blocks.getByHash(block.hash);
+    const isValidBlock = this.checkBlock(block);
+    if (isNewBlock && isValidBlock) {
+      this.blocks.add(block);
     }
   }
 }
