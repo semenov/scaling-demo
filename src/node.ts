@@ -39,6 +39,7 @@ export class Node {
       blockBodyHandler: this.blockBodyHandler,
     });
     this.accounts = new AccountStorage();
+    this.accounts.issue('Alice', bigInt('1000000'));
 
     getChainsList().forEach(chain => {
       if (isChainValidator(chain, this.peer.id)) {
@@ -112,6 +113,8 @@ export class Node {
       const txAllowed = this.checkTransaction(tx);
       if (txAllowed) {
         block.body.txs.push(tx.serialize());
+      } else {
+        console.error('Tx is not allowed', tx);
       }
     }
 
@@ -229,6 +232,7 @@ export class Node {
       this.proposedBlockInitialHash = undefined;
 
       this.blocks.add(block);
+      this.removeCommitedTxs(block);
 
       this.peer.broadcast({
         type: MessageType.Block,
@@ -247,6 +251,15 @@ export class Node {
     const isValidBlock = this.checkBlock(block);
     if (isNewBlock && isValidBlock) {
       this.blocks.add(block);
+      this.removeCommitedTxs(block);
+    }
+  }
+
+  removeCommitedTxs(block: Block): void {
+    for (const tx of block.body.txs) {
+      if (tx.hash) {
+        this.pendingTransactions.delete(tx.hash);
+      }
     }
   }
 }

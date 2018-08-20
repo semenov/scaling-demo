@@ -1,39 +1,49 @@
 import * as bigInt from 'big-integer';
 
+interface AccountOptions {
+  id: string;
+  balance: bigInt.BigInteger;
+}
+
 class Account {
   id: string;
   balance: bigInt.BigInteger;
 
-  constructor(options) {
+  constructor(options: AccountOptions) {
     this.id = options.id;
     this.balance = options.balance;
   }
 }
 
 export class AccountStorage {
-  accouts: Map<string, Account>;
+  accounts: Map<string, Account>;
 
   constructor() {
-    this.accouts = new Map();
+    this.accounts = new Map();
+  }
+
+  issue(to: string, amount: bigInt.BigInteger) {
+    const toAccount = this.getOrCreateAccount(to);
+    toAccount.balance = toAccount.balance.add(amount);
   }
 
   checkTransaction(from: string, amount: bigInt.BigInteger): boolean {
-    const account = this.accouts.get(from);
+    const account = this.accounts.get(from);
     if (!account) return false;
 
     return amount.greater(0) && account.balance.greaterOrEquals(amount);
   }
 
   getOrCreateAccount(id: string): Account {
-    const account = this.accouts.get(id);
+    const account = this.accounts.get(id);
     if (account) return account;
 
     const newAccount = new Account({
       id,
-      amount: bigInt(0),
+      balance: bigInt(0),
     });
 
-    this.accouts.set(id, newAccount);
+    this.accounts.set(id, newAccount);
 
     return newAccount;
   }
@@ -41,7 +51,7 @@ export class AccountStorage {
   transact(from: string, to: string, amount: bigInt.BigInteger): boolean {
     if (!this.checkTransaction(from, amount)) return false;
 
-    const fromAccount = this.accouts.get(from);
+    const fromAccount = this.accounts.get(from);
     if (!fromAccount) return false;
 
     fromAccount.balance = fromAccount.balance.subtract(amount);
