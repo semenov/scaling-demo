@@ -3,7 +3,7 @@ import * as FileAsync from 'lowdb/adapters/FileAsync';
 import { Peer, PeerOptions } from './peer';
 import { MessageType } from './message';
 import { Block } from './block';
-import { getChainsList, isChainValidator, isSlotLeader } from './authority';
+import { getChainsList, isChainValidator, isSlotLeader, getChainValidators } from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
 import { validateSchema } from './validation';
 import { Tx } from './tx';
@@ -11,6 +11,11 @@ import { AccountStorage } from './account-storage';
 import * as sleep from 'sleep-promise';
 import { blockTime, blockSize } from './config';
 import * as bigInt from 'big-integer';
+import { verifyObjectSignature } from './signature';
+
+function getKeyByID(id: number): string {
+  return 'shard_' + id;
+}
 
 interface NodeOptions {
   peerOptions: PeerOptions;
@@ -83,7 +88,7 @@ export class ShardNode {
       }
     }
 
-    block.sign(String(this.peer.id));
+    block.sign(getKeyByID(this.peer.id));
 
     this.blockProposals.set(block.hash, block);
 
@@ -122,18 +127,51 @@ export class ShardNode {
       if (!txAllowed) return;
     }
 
+    const publicKey = getKeyByID(this.peer.id);
+
     this.peer.broadcast({
       type: MessageType.BlockVote,
       channel: this.chain,
       data: {
         blockProposalHash: block.hash,
-        signature: block.sign(String(this.peer.id)),
+        signature: block.sign(publicKey),
       },
     });
   }
 
   private blockVoteHandler = msg => {
     validateSchema(blockVoteSchema, msg.data);
+
+    const blockProposalHash = msg.data.blockProposalHash;
+    const signature = msg.data.signature;
+
+    if (!this.isLeader) return;
+
+    const block = this.blockProposals.get(blockProposalHash);
+
+    if (!block) return;
+
+    const validSignature = block.validateSignature(signature);
+
+    if (!validSignature) return;
+
+    block.addSignature(signature);
+
+    const validators = getChainValidators(this.chain);
+    const blockAge = Date.now() - block.header.timestamp;
+    const hasTimeouted = blockAge > blockTime;
+    const isSignedByAll = block.signatures.length == validators.length;
+    const isSignedByTwoThirds = block.signatures.length > (validators.length * 2 / 3);
+    // Not handling the situation whet we get >2/3 votes before timeout and no votes after
+    const canCommit = isSignedByAll || (hasTimeouted && isSignedByTwoThirds);
+
+    if (canCommit) {
+      this.peer.broadcast({
+        type: MessageType.Block,
+        channel: this.chain,
+        data: block.serialize(),
+      });
+    }
   }
 
   private blockHandler = msg => {

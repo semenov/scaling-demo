@@ -51,26 +51,26 @@ async function connectToPeers(peer: Peer) {
     //   data: tx.serialize(),
     // });
 
-    const block = new Block({
-      header: {
-        parentBlockHash: '',
-        height: 1,
-        timestamp: Date.now(),
-        chain: 'shard_0',
-      },
-      body: {
-        txs: [tx.serialize()],
-      },
-      signatures: [],
-    });
+    // const block = new Block({
+    //   header: {
+    //     parentBlockHash: '',
+    //     height: 1,
+    //     timestamp: Date.now(),
+    //     chain: 'shard_0',
+    //   },
+    //   body: {
+    //     txs: [tx.serialize()],
+    //   },
+    //   signatures: [],
+    // });
 
-    block.sign('validator1');
+    // block.sign('validator1');
 
-    await peers[1].broadcast({
-      type: MessageType.Block,
-      channel: 'shard_0',
-      data: block.serialize(),
-    });
+    // await peers[1].broadcast({
+    //   type: MessageType.Block,
+    //   channel: 'shard_0',
+    //   data: block.serialize(),
+    // });
 
     console.log('Ready');
   } catch (e) {

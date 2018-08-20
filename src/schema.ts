@@ -69,7 +69,7 @@ export const blockVoteSchema = {
   type: 'object',
   properties: {
     blockProposalHash: { type: 'string' },
-    signature: { type: 'string' },
+    signature: blockSignatureSchema,
   },
   required: ['blockProposalHash', 'signature'],
 };

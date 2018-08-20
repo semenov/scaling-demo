@@ -42,23 +42,39 @@ export class Block {
     this.hash = options.hash;
   }
 
-  sign(privateKey: string): string {
+  sign(privateKey: string): SignatureInfo {
     const publicKey = getPublicKeyFromPrivatekey(privateKey);
     const signature = signObject(privateKey, {
       header: this.header,
       body: this.body,
     });
 
+    const signatureInfo = {
+      publicKey,
+      signature,
+    };
+
     if (!this.signatures.some(item => item.signature == signature)) {
-      this.signatures.push({
-        publicKey,
-        signature,
-      });
+      this.signatures.push(signatureInfo);
+
+      this.updateHash();
     }
 
-    this.updateHash();
+    return signatureInfo;
+  }
 
-    return signature;
+  validateSignature(signatureInfo: SignatureInfo): boolean {
+    return verifyObjectSignature(signatureInfo.publicKey, signatureInfo.signature, {
+      header: this.header,
+      body: this.body,
+    });
+  }
+
+  addSignature(signatureInfo: SignatureInfo): void {
+    if (!this.signatures.some(item => item.signature == signatureInfo.signature)) {
+      this.signatures.push(signatureInfo);
+      this.updateHash();
+    }
   }
 
   calculateHash(): string {
