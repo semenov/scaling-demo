@@ -20,8 +20,8 @@ export class Tx {
     this.from = options.from;
     this.to = options.to;
     this.amount = options.amount;
-    this.signature = options.signature;
-    this.hash = options.hash;
+    this.signature = options.signature || '';
+    this.hash = options.hash || '';
   }
 
   sign(privateKey: string): void {

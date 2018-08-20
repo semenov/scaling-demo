@@ -14,11 +14,13 @@ for (let i = 0; i < 100; i++) {
 
   const shardNumber = Math.floor(i / 10);
   const shard = 'shard_' + shardNumber;
-  if (!validators.has(shard)) {
-    validators.set(shard, []);
-  }
 
-  validators.get(shard).push(peerId);
+  const peers = validators.get(shard);
+  if (peers) {
+    peers.push(peerId);
+  } else {
+    validators.set(shard, [peerId]);
+  }
 }
 
 export function getChainsList(): string[] {
@@ -26,7 +28,7 @@ export function getChainsList(): string[] {
 }
 
 export function getChainValidators(chain: string): number[] {
-  return validators.get(chain);
+  return validators.get(chain) || [];
 }
 
 export function getChainLeader(chain: string): number {
@@ -34,17 +36,15 @@ export function getChainLeader(chain: string): number {
 }
 
 export function getChainsByNodeId(id: number): string[] {
-  const chains = [];
-
+  // const chains = [];
   // if (id % 10 == 0) {
   //   chains.push('basechain');
   // }
 
   const shardNumber = Math.floor(id / 10);
   const shard = 'shard_' + shardNumber;
-  chains.push(shard);
 
-  return chains;
+  return [shard];
 }
 
 export function isChainValidator(chain: string, id: number): boolean {

@@ -42,6 +42,8 @@ export class AccountStorage {
     if (!this.checkTransaction(from, amount)) return false;
 
     const fromAccount = this.accouts.get(from);
+    if (!fromAccount) return false;
+
     fromAccount.balance = fromAccount.balance.subtract(amount);
 
     const toAccount = this.getOrCreateAccount(to);

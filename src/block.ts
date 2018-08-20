@@ -39,7 +39,7 @@ export class Block {
     this.header = options.header;
     this.body = options.body;
     this.signatures = options.signatures;
-    this.hash = options.hash;
+    this.hash = options.hash || '';
   }
 
   sign(privateKey: string): SignatureInfo {

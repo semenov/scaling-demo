@@ -102,16 +102,21 @@ export class Peer {
   private addKnownMessage(msg: Message, socket: net.Socket): void {
     const hash = objectHash(msg);
     const list = this.knownMessages.get(socket);
-    if (list.length >= 100) {
-      list.shift();
-    }
 
-    list.push(hash);
+    if (list) {
+      if (list.length >= 100) {
+        list.shift();
+      }
+
+      list.push(hash);
+    }
   }
 
-  private isKnownMessage(msg: Message, socket: net.Socket) {
+  private isKnownMessage(msg: Message, socket: net.Socket): boolean {
     const hash = objectHash(msg);
     const list = this.knownMessages.get(socket);
+
+    if (!list) return false;
 
     return list.includes(hash);
   }

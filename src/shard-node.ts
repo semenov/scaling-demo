@@ -57,12 +57,28 @@ export class ShardNode {
   }
 
   async startBlockProduction() {
+    this.createGenesisBlock();
     while (true) {
       await sleep(blockTime);
       if (this.isLeader) {
         this.proposeBlock();
       }
     }
+  }
+
+  createGenesisBlock() {
+    const block = new Block({
+      header: {
+        parentBlockHash: '0'.repeat(40),
+        height: 0,
+        timestamp: Date.parse('20 Aug 2018 00:00:00 GMT'),
+        chain: this.chain,
+      },
+      body: {
+        txs: [],
+      },
+      signatures: [],
+    });
   }
 
   proposeBlock() {
