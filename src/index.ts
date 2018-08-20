@@ -1,10 +1,11 @@
 import * as sleep from 'sleep-promise';
-import { ShardNode } from './shard-node';
+import { Node } from './node';
 import { Peer } from './peer';
 import { MessageType } from './message';
 import { getChainLeader, getChainsByNodeId } from './authority';
-import { Tx } from './tx';
+import { Tx, TxType } from './tx';
 import { Block } from './block';
+import { inspect } from 'util';
 
 async function connectToPeers(peer: Peer) {
   const chains = getChainsByNodeId(peer.id);
@@ -20,9 +21,9 @@ async function connectToPeers(peer: Peer) {
   try {
     console.log('Starting servers');
 
-    const peers: Peer[] = [];
+    const nodes: Node[] = [];
     for (let i = 0; i < 10; i++) {
-      const node = new ShardNode({
+      const node = new Node({
         peerOptions : {
           id: i,
           host: '127.0.0.1',
@@ -33,23 +34,27 @@ async function connectToPeers(peer: Peer) {
       await node.start();
       await connectToPeers(node.peer);
 
-      peers[i] = node.peer;
+      nodes[i] = node;
     }
     await sleep(1000);
 
     const tx = new Tx({
-      from: 'Alice',
-      to: 'Bob',
-      amount: '100',
+      type: TxType.ValueTransfer,
+      data: {
+        from: 'Alice',
+        to: 'Bob',
+        amount: '100',
+      },
     });
 
-    tx.sign('Alice');
+    tx.data.sign('Alice');
+    tx.updateHash();
 
-    // await peers[1].broadcast({
-    //   type: MessageType.Tx,
-    //   channel: 'shard_0',
-    //   data: tx.serialize(),
-    // });
+    await nodes[1].peer.broadcast({
+      type: MessageType.Tx,
+      channel: 'shard_0',
+      data: tx.serialize(),
+    });
 
     // const block = new Block({
     //   header: {
@@ -71,6 +76,11 @@ async function connectToPeers(peer: Peer) {
     //   channel: 'shard_0',
     //   data: block.serialize(),
     // });
+
+    while (true) {
+      await sleep(5000);
+      console.log(inspect(nodes[9].blocks, false, null));
+    }
 
     console.log('Ready');
   } catch (e) {

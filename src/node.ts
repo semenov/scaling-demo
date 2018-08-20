@@ -6,7 +6,7 @@ import { Block, BlockBody } from './block';
 import { getChainsList, isChainValidator, isSlotLeader, getChainValidators } from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
 import { validateSchema } from './validation';
-import { Tx } from './tx';
+import { Tx, TxType } from './tx';
 import { AccountStorage } from './account-storage';
 import * as sleep from 'sleep-promise';
 import { blockTime, blockSize } from './config';
@@ -22,7 +22,7 @@ interface NodeOptions {
   peerOptions: PeerOptions;
 }
 
-export class ShardNode {
+export class Node {
   peer: Peer;
   pendingTransactions: Map<string, Tx>;
   blocks: BlockStorage;
@@ -109,7 +109,7 @@ export class ShardNode {
     for (const [hash, tx] of this.pendingTransactions) {
       if (block.body.txs.length >= blockSize) break;
 
-      const txAllowed = this.accounts.checkTransaction(tx.from, bigInt(tx.amount));
+      const txAllowed = this.checkTransaction(tx);
       if (txAllowed) {
         block.body.txs.push(tx.serialize());
       }
@@ -127,10 +127,21 @@ export class ShardNode {
     });
   }
 
+  checkTransaction(tx: Tx): boolean {
+    if (tx.type == TxType.ValueTransfer) {
+      const txAllowed = this.accounts.checkTransaction(tx.data.from, bigInt(tx.data.amount));
+      return txAllowed;
+    }
+
+    return true;
+  }
+
   private blockBodyHandler = (blockBody: BlockBody): boolean => {
     for (const txData of blockBody.txs) {
       const tx = new Tx(txData);
-      this.accounts.transact(tx.from, tx.to, bigInt(tx.amount));
+      if (tx.type == TxType.ValueTransfer) {
+        this.accounts.transact(tx.data.from, tx.data.to, bigInt(tx.data.amount));
+      }
     }
 
     return true;
@@ -142,9 +153,11 @@ export class ShardNode {
 
     if (this.pendingTransactions.has(tx.hash)) return;
 
-    if (tx.verifySignature(tx.from) && tx.verifyHash()) {
-      this.pendingTransactions.set(tx.hash, tx);
-      this.peer.broadcast(msg);
+    if (tx.type == TxType.ValueTransfer) {
+      if (tx.verifyHash() && tx.data.verifySignature(tx.data.from)) {
+        this.pendingTransactions.set(tx.hash, tx);
+        this.peer.broadcast(msg);
+      }
     }
   }
 
@@ -155,9 +168,11 @@ export class ShardNode {
 
     for (const txData of block.body.txs) {
       const tx = new Tx(txData);
-      if (!tx.verifyHash() || !tx.verifySignature(tx.from)) return false;
-      const txAllowed = this.accounts.checkTransaction(tx.from, bigInt(tx.amount));
-      if (!txAllowed) return false;
+      if (tx.type == TxType.ValueTransfer) {
+        if (!tx.verifyHash() || !tx.data.verifySignature(tx.data.from)) return false;
+        const txAllowed = this.accounts.checkTransaction(tx.data.from, bigInt(tx.data.amount));
+        if (!txAllowed) return false;
+      }
     }
 
     return true;

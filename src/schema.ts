@@ -8,16 +8,24 @@ export const messageSchema = {
   required: ['type', 'data', 'channel'],
 };
 
-export const txSchema = {
+export const valueTransferSchema = {
   type: 'object',
   properties: {
     from: { type: 'string' },
     to: { type: 'string' },
     amount: { type: 'string' },
     signature: { type: 'string' },
+  },
+  required: ['from', 'to', 'amount', 'signature'],
+};
+export const txSchema = {
+  type: 'object',
+  properties: {
+    type: { type: 'string' },
+    data: { anyOf: [valueTransferSchema] },
     hash: { type: 'string' },
   },
-  required: ['from', 'to', 'amount', 'signature', 'hash'],
+  required: ['type', 'data', 'hash'],
 };
 
 const blockHeaderSchema = {
