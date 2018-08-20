@@ -111,32 +111,39 @@ export class ShardNode {
     }
   }
 
-  private blockProposalHandler = msg => {
-    validateSchema(blockSchema, msg.data);
-    const block = new Block(msg.data);
+  checkBlock(block: Block): boolean {
     const chain = block.header.chain;
-
-    this.peer.broadcast(msg);
-
-    if (block.body.txs.length >= blockSize) return;
+    if (chain != this.chain) return false;
+    if (block.body.txs.length >= blockSize) return false;
 
     for (const txData of block.body.txs) {
       const tx = new Tx(txData);
-      if (!tx.verifyHash() || !tx.verifySignature(tx.from)) return;
+      if (!tx.verifyHash() || !tx.verifySignature(tx.from)) return false;
       const txAllowed = this.accounts.checkTransaction(tx.from, bigInt(tx.amount));
-      if (!txAllowed) return;
+      if (!txAllowed) return false;
     }
 
-    const publicKey = getKeyByID(this.peer.id);
+    return true;
+  }
 
-    this.peer.broadcast({
-      type: MessageType.BlockVote,
-      channel: this.chain,
-      data: {
-        blockProposalHash: block.hash,
-        signature: block.sign(publicKey),
-      },
-    });
+  private blockProposalHandler = msg => {
+    validateSchema(blockSchema, msg.data);
+    const block = new Block(msg.data);
+
+    this.peer.broadcast(msg);
+
+    if (this.checkBlock(block)) {
+      const publicKey = getKeyByID(this.peer.id);
+
+      this.peer.broadcast({
+        type: MessageType.BlockVote,
+        channel: this.chain,
+        data: {
+          blockProposalHash: block.hash,
+          signature: block.sign(publicKey),
+        },
+      });
+    }
   }
 
   private blockVoteHandler = msg => {
@@ -176,9 +183,15 @@ export class ShardNode {
 
   private blockHandler = msg => {
     validateSchema(blockSchema, msg.data);
-    const block = new Block(msg.data);
-    const chain = block.header.chain;
-
     this.peer.broadcast(msg);
+
+    const block = new Block(msg.data);
+    if (this.checkBlock(block)) {
+      this.blocks.set(block.hash, block);
+      for (const txData of block.body.txs) {
+        const tx = new Tx(txData);
+        this.accounts.transact(tx.from, tx.to, bigInt(tx.amount));
+      }
+    }
   }
 }
