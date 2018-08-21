@@ -1,7 +1,5 @@
-import * as lowdb from 'lowdb';
-import * as FileAsync from 'lowdb/adapters/FileAsync';
 import { Peer, PeerOptions } from './peer';
-import { MessageType } from './message';
+import { MessageType, Message } from './message';
 import { Block, BlockBody } from './block';
 import { getChainsList, isChainValidator, isSlotLeader, getChainValidators } from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
@@ -11,16 +9,14 @@ import { AccountStorage } from './account-storage';
 import * as sleep from 'sleep-promise';
 import { blockTime, blockSize } from './config';
 import * as bigInt from 'big-integer';
-import { verifyObjectSignature } from './signature';
 import { BlockStorage } from './block-storage';
 import { ValueTransfer } from './value-transfer';
-import { ShardCommit } from './shard-commit';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
 }
 
-function sendCrosschainMessage(msg) {
+function sendCrosschainMessage(msg: Message): void {
 
 }
 
@@ -237,32 +233,37 @@ export class Node {
     const canCommit = isSignedByAll || (hasTimeouted && isSignedByTwoThirds);
 
     if (canCommit) {
-      this.proposedBlock = undefined;
-      this.proposedBlockInitialHash = undefined;
-
-      this.blocks.add(block);
-      this.removeCommitedTxs(block);
-
-      const shardCommitTx = new Tx({
-        type: TxType.ShardCommit,
-        data: {
-          blockHash: block.hash,
-          signatures: block.signatures,
-        },
-      });
-
-      sendCrosschainMessage({
-        type: MessageType.Tx,
-        channel: 'basechain',
-        data: shardCommitTx.serialize(),
-      });
-
-      this.peer.broadcast({
-        type: MessageType.Block,
-        channel: this.chain,
-        data: block.serialize(),
-      });
+      this.commitBlock(block);
     }
+  }
+
+  commitBlock(block: Block): void {
+    this.proposedBlock = undefined;
+    this.proposedBlockInitialHash = undefined;
+
+    this.blocks.add(block);
+    this.removeCommitedTxs(block);
+
+    const shardCommitTx = new Tx({
+      type: TxType.ShardCommit,
+      data: {
+        blockHash: block.hash,
+        chain: this.chain,
+        signatures: block.signatures,
+      },
+    });
+
+    sendCrosschainMessage({
+      type: MessageType.Tx,
+      channel: 'basechain',
+      data: shardCommitTx.serialize(),
+    });
+
+    this.peer.broadcast({
+      type: MessageType.Block,
+      channel: this.chain,
+      data: block.serialize(),
+    });
   }
 
   private blockHandler = msg => {

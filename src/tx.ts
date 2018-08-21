@@ -1,11 +1,11 @@
 import * as objectHash from 'object-hash';
 import { signObject, verifyObjectSignature } from './signature';
 import { ValueTransfer, ValueTransferInfo } from './value-transfer';
-import { ShardCommit } from './shard-commit';
+import { ShardCommit, ShardCommitInfo } from './shard-commit';
 
 export interface TxInfo {
   type: TxType;
-  data: object;
+  data: ValueTransferInfo | ShardCommitInfo;
   hash?: string;
 }
 
@@ -32,7 +32,11 @@ export class Tx {
       this.data = new ShardCommit(options.data as ShardCommit);
     }
 
-    this.hash = options.hash || '';
+    if (options.hash) {
+      this.hash = options.hash;
+    } else {
+      this.updateHash();
+    }
   }
 
   calculateHash(): string {
