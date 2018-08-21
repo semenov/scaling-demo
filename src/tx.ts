@@ -1,6 +1,7 @@
 import * as objectHash from 'object-hash';
 import { signObject, verifyObjectSignature } from './signature';
 import { ValueTransfer, ValueTransferInfo } from './value-transfer';
+import { ShardCommit } from './shard-commit';
 
 export interface TxInfo {
   type: TxType;
@@ -10,9 +11,10 @@ export interface TxInfo {
 
 export enum TxType {
   ValueTransfer = 'value_transfer',
+  ShardCommit = 'shard_commit',
 }
 
-type TxData = ValueTransfer;
+type TxData = ValueTransfer | ShardCommit;
 
 export class Tx {
   type: TxType;
@@ -25,6 +27,11 @@ export class Tx {
     if (this.type == TxType.ValueTransfer) {
       this.data = new ValueTransfer(options.data as ValueTransferInfo);
     }
+
+    if (this.type == TxType.ShardCommit) {
+      this.data = new ShardCommit(options.data as ShardCommit);
+    }
+
     this.hash = options.hash || '';
   }
 

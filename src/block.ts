@@ -1,15 +1,10 @@
 import { Tx, TxInfo } from './tx';
-import { signObject, verifyObjectSignature } from './signature';
+import { signObject, verifyObjectSignature, SignatureInfo } from './signature';
 import * as objectHash from 'object-hash';
 
 function getPublicKeyFromPrivatekey(privateKey: string): string {
   // We use same private and public key for debug purposes
   return privateKey;
-}
-
-interface SignatureInfo {
-  publicKey: string;
-  signature: string;
 }
 
 interface BlockInfo {
@@ -25,6 +20,7 @@ interface BlockHeader {
   height: number;
   parentBlockHash: string;
 }
+
 export interface BlockBody {
   txs: TxInfo[];
 }

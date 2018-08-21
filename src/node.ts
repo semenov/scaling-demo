@@ -13,6 +13,7 @@ import { blockTime, blockSize } from './config';
 import * as bigInt from 'big-integer';
 import { verifyObjectSignature } from './signature';
 import { BlockStorage } from './block-storage';
+import { ValueTransfer } from './value-transfer';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
@@ -135,7 +136,7 @@ export class Node {
   }
 
   checkTransaction(tx: Tx): boolean {
-    if (tx.type == TxType.ValueTransfer) {
+    if (tx.data instanceof ValueTransfer) {
       const txAllowed = this.accounts.checkTransaction(tx.data.from, bigInt(tx.data.amount));
       return txAllowed;
     }
@@ -146,7 +147,7 @@ export class Node {
   private blockBodyHandler = (blockBody: BlockBody): boolean => {
     for (const txData of blockBody.txs) {
       const tx = new Tx(txData);
-      if (tx.type == TxType.ValueTransfer) {
+      if (tx.data instanceof ValueTransfer) {
         this.accounts.transact(tx.data.from, tx.data.to, bigInt(tx.data.amount));
       }
     }
@@ -160,7 +161,7 @@ export class Node {
 
     if (this.pendingTransactions.has(tx.hash)) return;
 
-    if (tx.type == TxType.ValueTransfer) {
+    if (tx.data instanceof ValueTransfer) {
       if (tx.verifyHash() && tx.data.verifySignature(tx.data.from)) {
         this.pendingTransactions.set(tx.hash, tx);
         this.peer.broadcast(msg);
@@ -175,7 +176,7 @@ export class Node {
 
     for (const txData of block.body.txs) {
       const tx = new Tx(txData);
-      if (tx.type == TxType.ValueTransfer) {
+      if (tx.data instanceof ValueTransfer) {
         if (!tx.verifyHash() || !tx.data.verifySignature(tx.data.from)) return false;
         const txAllowed = this.accounts.checkTransaction(tx.data.from, bigInt(tx.data.amount));
         if (!txAllowed) return false;

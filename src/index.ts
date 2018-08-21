@@ -6,6 +6,7 @@ import { getChainLeader, getChainsByNodeId } from './authority';
 import { Tx, TxType } from './tx';
 import { Block } from './block';
 import { inspect } from 'util';
+import { ValueTransfer } from './value-transfer';
 
 async function connectToPeers(peer: Peer) {
   const chains = getChainsByNodeId(peer.id);
@@ -47,7 +48,7 @@ async function connectToPeers(peer: Peer) {
       },
     });
 
-    tx.data.sign('Alice');
+    (tx.data as ValueTransfer).sign('Alice');
     tx.updateHash();
 
     await nodes[1].peer.broadcast({

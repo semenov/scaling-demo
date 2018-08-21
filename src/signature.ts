@@ -1,6 +1,11 @@
 import * as crypto from 'crypto';
 import * as objectHash from 'object-hash';
 
+export interface SignatureInfo {
+  publicKey: string;
+  signature: string;
+}
+
 export function signObject(key: string, object: object): string {
   const hash = objectHash(object);
   const hmac = crypto.createHmac('sha256', key);
