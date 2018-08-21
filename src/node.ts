@@ -18,6 +18,10 @@ function getKeyByID(id: number): string {
   return 'peer_' + id;
 }
 
+function sendCrosschainMessage(msg) {
+
+}
+
 interface NodeOptions {
   peerOptions: PeerOptions;
 }
@@ -215,7 +219,10 @@ export class Node {
 
     const validSignature = block.validateSignature(signature);
 
-    if (!validSignature) return;
+    if (!validSignature) {
+      console.error('Invalid signature on block vote');
+      return;
+    }
 
     block.addSignature(signature);
 
@@ -233,6 +240,15 @@ export class Node {
 
       this.blocks.add(block);
       this.removeCommitedTxs(block);
+
+      sendCrosschainMessage({
+        type: MessageType.ShardCommit,
+        channel: 'basechain',
+        data: {
+          blockHash: block.hash,
+          signatures: block.signatures,
+        },
+      });
 
       this.peer.broadcast({
         type: MessageType.Block,

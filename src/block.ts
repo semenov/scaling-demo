@@ -43,10 +43,11 @@ export class Block {
   }
 
   sign(privateKey: string): SignatureInfo {
+    this.updateHash();
+
     const publicKey = getPublicKeyFromPrivatekey(privateKey);
     const signature = signObject(privateKey, {
-      header: this.header,
-      body: this.body,
+      hash: this.hash,
     });
 
     const signatureInfo = {
@@ -56,8 +57,6 @@ export class Block {
 
     if (!this.signatures.some(item => item.signature == signature)) {
       this.signatures.push(signatureInfo);
-
-      this.updateHash();
     }
 
     return signatureInfo;
@@ -65,15 +64,13 @@ export class Block {
 
   validateSignature(signatureInfo: SignatureInfo): boolean {
     return verifyObjectSignature(signatureInfo.publicKey, signatureInfo.signature, {
-      header: this.header,
-      body: this.body,
+      hash: this.hash,
     });
   }
 
   addSignature(signatureInfo: SignatureInfo): void {
     if (!this.signatures.some(item => item.signature == signatureInfo.signature)) {
       this.signatures.push(signatureInfo);
-      this.updateHash();
     }
   }
 
@@ -81,7 +78,6 @@ export class Block {
     return objectHash({
       header: this.header,
       body: this.body,
-      signatures: this.signatures,
     });
   }
 

@@ -14,6 +14,7 @@ export enum MessageType {
   Block = 'block',
   BlockProposal = 'block_proposal',
   BlockVote = 'block_vote',
+  ShardCommit = 'shard_commit',
 }
 
 function decodeMessage(bufffer: Buffer): Message {
