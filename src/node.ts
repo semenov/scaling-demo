@@ -14,6 +14,7 @@ import * as bigInt from 'big-integer';
 import { verifyObjectSignature } from './signature';
 import { BlockStorage } from './block-storage';
 import { ValueTransfer } from './value-transfer';
+import { ShardCommit } from './shard-commit';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
@@ -242,13 +243,18 @@ export class Node {
       this.blocks.add(block);
       this.removeCommitedTxs(block);
 
-      sendCrosschainMessage({
-        type: MessageType.ShardCommit,
-        channel: 'basechain',
+      const shardCommitTx = new Tx({
+        type: TxType.ShardCommit,
         data: {
           blockHash: block.hash,
           signatures: block.signatures,
         },
+      });
+
+      sendCrosschainMessage({
+        type: MessageType.Tx,
+        channel: 'basechain',
+        data: shardCommitTx.serialize(),
       });
 
       this.peer.broadcast({
