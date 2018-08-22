@@ -11,13 +11,10 @@ import { blockTime, blockSize } from './config';
 import * as bigInt from 'big-integer';
 import { BlockStorage } from './block-storage';
 import { ValueTransfer } from './value-transfer';
+import { ShardCommit } from './shard-commit';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
-}
-
-function sendCrosschainMessage(msg: Message): void {
-
 }
 
 interface NodeOptions {
@@ -164,6 +161,15 @@ export class Node {
         this.peer.broadcast(msg);
       }
     }
+
+    if (tx.data instanceof ShardCommit) {
+      const isBasechain = this.chain == 'basechain';
+      const areSignaturesVerifiied = tx.data.verifySignatures();
+      if (isBasechain && areSignaturesVerifiied) {
+        this.pendingTransactions.set(tx.hash, tx);
+        this.peer.broadcast(msg);
+      }
+    }
   }
 
   checkBlock(block: Block): boolean {
@@ -177,6 +183,14 @@ export class Node {
         if (!tx.verifyHash() || !tx.data.verifySignature(tx.data.from)) return false;
         const txAllowed = this.accounts.checkTransaction(tx.data.from, bigInt(tx.data.amount));
         if (!txAllowed) return false;
+      }
+
+      if (tx.data instanceof ShardCommit) {
+        const isBasechain = chain == 'basechain';
+        const areSignaturesVerifiied = tx.data.verifySignatures();
+        if (!isBasechain || !areSignaturesVerifiied) {
+          return false;
+        }
       }
     }
 

@@ -98,10 +98,10 @@ async function connectToInterchanges(peer: Peer) {
     //   data: block.serialize(),
     // });
 
-    // while (true) {
-    //   await sleep(5000);
-    //   console.log(inspect(nodes[9].blocks, false, null));
-    // }
+    while (true) {
+      await sleep(5000);
+      console.log(inspect(nodes[0].blocks, false, null));
+    }
 
     console.log('Ready');
   } catch (e) {
