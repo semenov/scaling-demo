@@ -1,7 +1,7 @@
 import { Peer, PeerOptions } from './peer';
 import { MessageType, Message } from './message';
 import { Block, BlockBody } from './block';
-import { getChainsList, isChainValidator, isSlotLeader, getChainValidators } from './authority';
+import { getChainsList, isChainValidator, isChainLeader, getChainValidators } from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
 import { validateSchema } from './validation';
 import { Tx, TxType } from './tx';
@@ -47,7 +47,7 @@ export class Node {
       if (isChainValidator(chain, this.peer.id)) {
         this.peer.subscribeToChannel(chain);
         this.chain = chain;
-        this.isLeader = isSlotLeader(chain, this.peer.id);
+        this.isLeader = isChainLeader(chain, this.peer.id);
       }
     });
 
@@ -253,11 +253,13 @@ export class Node {
       },
     });
 
-    sendCrosschainMessage({
-      type: MessageType.Tx,
-      channel: 'basechain',
-      data: shardCommitTx.serialize(),
-    });
+    if (this.chain != 'basechain') {
+      this.peer.sendInterchangeMessage({
+        type: MessageType.Tx,
+        channel: 'basechain',
+        data: shardCommitTx.serialize(),
+      });
+    }
 
     this.peer.broadcast({
       type: MessageType.Block,

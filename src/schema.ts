@@ -8,6 +8,15 @@ export const messageSchema = {
   required: ['type', 'data', 'channel'],
 };
 
+const blockSignatureSchema = {
+  type: 'object',
+  properties: {
+    publicKey: { type: 'string' },
+    signature: { type: 'string' },
+  },
+  required: ['publicKey', 'signature'],
+};
+
 export const valueTransferSchema = {
   type: 'object',
   properties: {
@@ -18,11 +27,25 @@ export const valueTransferSchema = {
   },
   required: ['from', 'to', 'amount', 'signature'],
 };
+
+export const shardCommitSchema = {
+  type: 'object',
+  properties: {
+    blockHash: { type: 'string' },
+    chain: { type: 'string' },
+    signatures: {
+      type: 'array',
+      items: blockSignatureSchema,
+    },
+  },
+  required: ['blockHash', 'chain', 'signatures'],
+};
+
 export const txSchema = {
   type: 'object',
   properties: {
     type: { type: 'string' },
-    data: { anyOf: [valueTransferSchema] },
+    data: { anyOf: [valueTransferSchema, shardCommitSchema] },
     hash: { type: 'string' },
   },
   required: ['type', 'data', 'hash'],
@@ -48,15 +71,6 @@ const blockBodySchema = {
     },
   },
   required: ['txs'],
-};
-
-const blockSignatureSchema = {
-  type: 'object',
-  properties: {
-    publicKey: { type: 'string' },
-    signature: { type: 'string' },
-  },
-  required: ['publicKey', 'signature'],
 };
 
 export const blockSchema = {

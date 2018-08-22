@@ -43,6 +43,7 @@ export interface PeerOptions {
   id: number;
   host: string;
   port: number;
+  interchangePort: number;
 }
 
 export class Peer {
@@ -50,8 +51,11 @@ export class Peer {
   server: net.Server;
   host: string;
   port: number;
+  interchangePort: number;
+  interchangeServer: net.Server;
   peers: net.Socket[];
   channels: string[];
+  interchangePeers: Map<string, net.Socket>;
   isByzantine: boolean;
   isSeed: boolean;
   messageHandlers: Map<MessageType, MessageHandler>;
@@ -61,14 +65,17 @@ export class Peer {
     this.id = options.id;
     this.host = options.host;
     this.port = options.port;
+    this.interchangePort = options.interchangePort;
     this.peers = [];
     this.channels = [];
+    this.interchangePeers = new Map();
     this.messageHandlers = new Map();
     this.knownMessages = new Map();
   }
 
   async start() {
     this.server = await startServer(this.host, this.port, this.handleConnect);
+    this.interchangeServer = await startServer(this.host, this.interchangePort, this.handleConnect);
   }
 
   async connectPeer(host: string, port: number): Promise<void> {
@@ -129,12 +136,27 @@ export class Peer {
     }
   }
 
+  sendInterchangeMessage(msg: Message) {
+    const socket = this.interchangePeers.get(msg.channel);
+
+    if (socket) {
+      sendMessage(socket, msg);
+    } else {
+      console.error('No interchange peer found');
+    }
+  }
+
   subscribeToChannel(channel: string) {
     this.channels.push(channel);
   }
 
   unsubscribeFromChannel(channel: string) {
     this.channels = this.channels.filter(item => item != channel);
+  }
+
+  async connectChannelPeer(channel: string, host: string, port: number) {
+    const socket = await connectPeer(host, port);
+    this.interchangePeers.set(channel, socket);
   }
 
   setMessageHandler(messageType: MessageType, handler: MessageHandler) {

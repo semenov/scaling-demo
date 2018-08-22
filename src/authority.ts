@@ -1,26 +1,24 @@
+import { nodeNumber } from './config';
 
 export const validators: Map<string, number[]> = new Map();
 
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < nodeNumber; i++) {
   const peerId = i;
+  const chain = getChainsByNodeId(peerId);
 
-  // if (i % 10 == 0) {
-  //   if (!validators.has('basechain')) {
-  //     validators.set('basechain', []);
-  //   }
-
-  //   validators.get('basechain').push(peerId);
-  // }
-
-  const shardNumber = Math.floor(i / 10);
-  const shard = 'shard_' + shardNumber;
-
-  const peers = validators.get(shard);
+  const peers = validators.get(chain);
   if (peers) {
     peers.push(peerId);
   } else {
-    validators.set(shard, [peerId]);
+    validators.set(chain, [peerId]);
   }
+}
+
+export function getChainsByNodeId(id: number): string {
+  const shardNumber = Math.floor(id / 10);
+  const chain = id < 10 ? 'basechain' : 'shard_' + shardNumber;
+
+  return chain;
 }
 
 export function getChainsList(): string[] {
@@ -35,18 +33,6 @@ export function getChainLeader(chain: string): number {
   return getChainValidators(chain)[0];
 }
 
-export function getChainsByNodeId(id: number): string[] {
-  // const chains = [];
-  // if (id % 10 == 0) {
-  //   chains.push('basechain');
-  // }
-
-  const shardNumber = Math.floor(id / 10);
-  const shard = 'shard_' + shardNumber;
-
-  return [shard];
-}
-
 export function isChainValidator(chain: string, id: number): boolean {
   const chainValidators = getChainValidators(chain);
   if (!chainValidators) {
@@ -56,7 +42,7 @@ export function isChainValidator(chain: string, id: number): boolean {
   return chainValidators.includes(id);
 }
 
-export function isSlotLeader(chain: string, id: number): boolean {
+export function isChainLeader(chain: string, id: number): boolean {
   const chainValidators = getChainValidators(chain);
   if (!chainValidators) {
     return false;

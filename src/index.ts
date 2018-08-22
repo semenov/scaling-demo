@@ -2,18 +2,30 @@ import * as sleep from 'sleep-promise';
 import { Node } from './node';
 import { Peer } from './peer';
 import { MessageType } from './message';
-import { getChainLeader, getChainsByNodeId } from './authority';
+import { getChainLeader, getChainsByNodeId, getChainsList, isChainLeader } from './authority';
 import { Tx, TxType } from './tx';
 import { Block } from './block';
 import { inspect } from 'util';
 import { ValueTransfer } from './value-transfer';
+import { nodeNumber } from './config';
 
 async function connectToPeers(peer: Peer) {
-  const chains = getChainsByNodeId(peer.id);
-  for (const chain of chains) {
-    const id = getChainLeader(chain);
-    if (id != peer.id) {
-      await peer.connectPeer('localhost', 7000 + id);
+  const chain = getChainsByNodeId(peer.id);
+  const id = getChainLeader(chain);
+  if (id != peer.id) {
+    await peer.connectPeer('localhost', 7000 + id);
+  }
+}
+
+async function connectToInterchanges(peer: Peer) {
+  const nodeChain = getChainsByNodeId(peer.id);
+  if (isChainLeader(nodeChain, peer.id)) {
+    const chains = getChainsList();
+    for (const chain of chains) {
+      const id = getChainLeader(chain);
+      if (id != peer.id) {
+        await peer.connectChannelPeer(chain, 'localhost', 8000 + id);
+      }
     }
   }
 }
@@ -23,12 +35,13 @@ async function connectToPeers(peer: Peer) {
     console.log('Starting servers');
 
     const nodes: Node[] = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < nodeNumber; i++) {
       const node = new Node({
         peerOptions : {
           id: i,
           host: '127.0.0.1',
           port: 7000 + i,
+          interchangePort: 8000 + i,
         },
       });
 
@@ -37,7 +50,14 @@ async function connectToPeers(peer: Peer) {
 
       nodes[i] = node;
     }
-    await sleep(1000);
+
+    const chains = getChainsList();
+    for (const chain of chains) {
+      const id = getChainLeader(chain);
+      await connectToInterchanges(nodes[id].peer);
+    }
+
+    await sleep(5000);
 
     const tx = new Tx({
       type: TxType.ValueTransfer,
@@ -51,9 +71,9 @@ async function connectToPeers(peer: Peer) {
     (tx.data as ValueTransfer).sign('Alice');
     tx.updateHash();
 
-    await nodes[1].peer.broadcast({
+    await nodes[10].peer.broadcast({
       type: MessageType.Tx,
-      channel: 'shard_0',
+      channel: 'shard_1',
       data: tx.serialize(),
     });
 
@@ -78,10 +98,10 @@ async function connectToPeers(peer: Peer) {
     //   data: block.serialize(),
     // });
 
-    while (true) {
-      await sleep(5000);
-      console.log(inspect(nodes[9].blocks, false, null));
-    }
+    // while (true) {
+    //   await sleep(5000);
+    //   console.log(inspect(nodes[9].blocks, false, null));
+    // }
 
     console.log('Ready');
   } catch (e) {
