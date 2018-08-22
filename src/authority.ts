@@ -1,4 +1,6 @@
 import { nodeNumber } from './config';
+import { createHash } from 'crypto';
+import * as bigInt from 'big-integer';
 
 export const validators: Map<string, number[]> = new Map();
 
@@ -49,4 +51,15 @@ export function isChainLeader(chain: string, id: number): boolean {
   }
 
   return chainValidators[0] == id;
+}
+
+export function getAddressShard(address: string): string {
+  const shardCount = getChainsList().length - 1;
+  const hash = createHash('sha256');
+  hash.update(address);
+  const addressHashString = hash.digest('hex');
+  const addressHash = bigInt(addressHashString, 16);
+  const shardNumber = addressHash.remainder(shardCount);
+
+  return 'shard_' + shardNumber;
 }
