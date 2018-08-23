@@ -175,8 +175,17 @@ async function generateTxs(nodes: Node[], addresses: string[]) {
 
     while (true) {
       await sleep(5000);
-      console.log(inspect(nodes[10].blocks.getLast(), false, null));
-      console.log('Pending txs', nodes[20].pendingTransactions.size);
+      console.log('='.repeat(40));
+
+      for (let i = 0; i < nodeNumber; i += 10) {
+        const chain = getChainsByNodeId(i);
+        console.log('Chain:', chain);
+        const block = nodes[i].blocks.getLast();
+        console.log('Block height:', block.header.height);
+        console.log('Block tx number:', block.body.txs.length);
+        console.log('Pending txs:', nodes[i].pendingTransactions.size);
+        console.log('\n');
+      }
     }
 
     console.log('Ready');
