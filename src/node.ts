@@ -1,7 +1,13 @@
 import { Peer, PeerOptions } from './peer';
 import { MessageType, Message } from './message';
 import { Block, BlockBody } from './block';
-import { getChainsList, isChainValidator, isChainLeader, getChainValidators } from './authority';
+import {
+  getChainsList,
+  isChainValidator,
+  isChainLeader,
+  getChainValidators,
+  getAddressShard,
+} from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
 import { validateSchema } from './validation';
 import { Tx, TxType } from './tx';
@@ -12,6 +18,7 @@ import * as bigInt from 'big-integer';
 import { BlockStorage } from './block-storage';
 import { ValueTransfer } from './value-transfer';
 import { ShardCommit } from './shard-commit';
+import { Receipt } from './receipt';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
@@ -35,7 +42,7 @@ export class Node {
     this.peer = new Peer(options.peerOptions);
     this.pendingTransactions =  new Map();
     this.blocks = new BlockStorage({
-      blockBodyHandler: this.blockBodyHandler,
+      blockHandler: this.blockAddHandler,
     });
     this.accounts = new AccountStorage();
     this.accounts.issue('Alice', bigInt('1000000'));
@@ -138,11 +145,32 @@ export class Node {
     return true;
   }
 
-  private blockBodyHandler = (blockBody: BlockBody): boolean => {
-    for (const txData of blockBody.txs) {
+  private blockAddHandler = (block: Block): boolean => {
+    for (const txData of block.body.txs) {
       const tx = new Tx(txData);
       if (tx.data instanceof ValueTransfer) {
-        this.accounts.transact(tx.data.from, tx.data.to, bigInt(tx.data.amount));
+        const destinationChain = getAddressShard(tx.data.to);
+
+        if (getAddressShard(tx.data.to) == this.chain) {
+          this.accounts.transact(tx.data.from, tx.data.to, bigInt(tx.data.amount));
+        } else {
+          this.accounts.transactOuter(tx.data.from, bigInt(tx.data.amount));
+          // Send interchange message to other shard
+          const receiptTx = new Tx({
+            type: TxType.Receipt,
+            data: {
+              blockHash: block.hash,
+              chain: this.chain,
+              signatures: block.signatures,
+            },
+          });
+
+          this.peer.sendInterchangeMessage({
+            type: MessageType.Tx,
+            channel: destinationChain,
+            data: receiptTx.serialize(),
+          });
+        }
       }
     }
 
@@ -160,6 +188,11 @@ export class Node {
         this.pendingTransactions.set(tx.hash, tx);
         this.peer.broadcast(msg);
       }
+    }
+
+    if (tx.data instanceof Receipt) {
+      this.pendingTransactions.set(tx.hash, tx);
+      this.peer.broadcast(msg);
     }
 
     if (tx.data instanceof ShardCommit) {

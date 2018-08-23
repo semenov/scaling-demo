@@ -1,25 +1,25 @@
 import { Block, BlockBody } from './block';
 
-type BlockBodyHandler = (body: BlockBody) => boolean;
+type BlockHandler = (body: Block) => boolean;
 
 interface BlockStorageOptions {
-  blockBodyHandler: BlockBodyHandler;
+  blockHandler: BlockHandler;
 }
 
 export class BlockStorage {
   blocks: Block[];
-  bodyHandler: BlockBodyHandler;
+  blockHandler: BlockHandler;
 
   constructor(options: BlockStorageOptions) {
     this.blocks = [];
-    this.bodyHandler = options.blockBodyHandler;
+    this.blockHandler = options.blockHandler;
   }
 
   add(block: Block): boolean {
     const lastBlock = this.getLast();
     if (lastBlock && lastBlock.hash != block.header.parentBlockHash) return false;
 
-    const result = this.bodyHandler(block.body);
+    const result = this.blockHandler(block);
     if (!result) return false;
     this.blocks.push(block);
 

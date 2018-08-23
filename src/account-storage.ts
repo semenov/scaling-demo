@@ -62,4 +62,15 @@ export class AccountStorage {
 
     return true;
   }
+
+  transactOuter(from: string, amount: bigInt.BigInteger): boolean {
+    if (!this.checkTransaction(from, amount)) return false;
+
+    const fromAccount = this.accounts.get(from);
+    if (!fromAccount) return false;
+
+    fromAccount.balance = fromAccount.balance.subtract(amount);
+
+    return true;
+  }
 }

@@ -28,6 +28,17 @@ export const valueTransferSchema = {
   required: ['from', 'to', 'amount', 'signature'],
 };
 
+export const receiptSchema = {
+  type: 'object',
+  properties: {
+    blockHash: { type: 'string' },
+    originalTxHash: { type: 'string' },
+    to: { type: 'string' },
+    amount: { type: 'string' },
+  },
+  required: ['blockHash', 'originalTxHash', 'to', 'amount'],
+};
+
 export const shardCommitSchema = {
   type: 'object',
   properties: {
@@ -45,7 +56,7 @@ export const txSchema = {
   type: 'object',
   properties: {
     type: { type: 'string' },
-    data: { anyOf: [valueTransferSchema, shardCommitSchema] },
+    data: { anyOf: [valueTransferSchema, shardCommitSchema, receiptSchema] },
     hash: { type: 'string' },
   },
   required: ['type', 'data', 'hash'],
