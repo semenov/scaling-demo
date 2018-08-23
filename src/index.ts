@@ -65,6 +65,40 @@ function addAccounts(node: Node, addreses: string[]): void {
   });
 }
 
+function getRandomAddress(addresses: string[]): string {
+  const index = Math.floor(Math.random() * addresses.length);
+
+  return addresses[index];
+}
+
+async function generateTxs(nodes: Node[], addresses: string[]) {
+  while (true) {
+    await sleep(10);
+    const from = getRandomAddress(addresses);
+    const to = getRandomAddress(addresses);
+    const senderShard = getAddressShard(from);
+    const id = getChainLeader(senderShard);
+    const tx = new Tx({
+      type: TxType.ValueTransfer,
+      data: {
+        from,
+        to,
+        amount: '1',
+      },
+    });
+
+    (tx.data as ValueTransfer).sign(from);
+    tx.updateHash();
+
+    await nodes[id + 1].peer.broadcast({
+      type: MessageType.Tx,
+      channel: senderShard,
+      data: tx.serialize(),
+    });
+  }
+
+}
+
 (async () => {
   try {
     console.log('Starting servers');
@@ -98,23 +132,25 @@ function addAccounts(node: Node, addreses: string[]): void {
 
     await sleep(5000);
 
-    const tx = new Tx({
-      type: TxType.ValueTransfer,
-      data: {
-        from: 'Alice',
-        to: 'Bob',
-        amount: '100',
-      },
-    });
+    generateTxs(nodes, addresses).catch(e => console.error(e));
 
-    (tx.data as ValueTransfer).sign('Alice');
-    tx.updateHash();
+    // const tx = new Tx({
+    //   type: TxType.ValueTransfer,
+    //   data: {
+    //     from: 'Alice',
+    //     to: 'Bob',
+    //     amount: '100',
+    //   },
+    // });
 
-    await nodes[10].peer.broadcast({
-      type: MessageType.Tx,
-      channel: 'shard_1',
-      data: tx.serialize(),
-    });
+    // (tx.data as ValueTransfer).sign('Alice');
+    // tx.updateHash();
+
+    // await nodes[10].peer.broadcast({
+    //   type: MessageType.Tx,
+    //   channel: 'shard_1',
+    //   data: tx.serialize(),
+    // });
 
     // const block = new Block({
     //   header: {
@@ -139,7 +175,8 @@ function addAccounts(node: Node, addreses: string[]): void {
 
     while (true) {
       await sleep(5000);
-      console.log(inspect(nodes[0].blocks, false, null));
+      console.log(inspect(nodes[10].blocks.getLast(), false, null));
+      console.log('Pending txs', nodes[20].pendingTransactions.size);
     }
 
     console.log('Ready');

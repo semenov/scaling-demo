@@ -59,7 +59,7 @@ export function getAddressShard(address: string): string {
   hash.update(address);
   const addressHashString = hash.digest('hex');
   const addressHash = bigInt(addressHashString, 16);
-  const shardNumber = addressHash.remainder(shardCount);
+  const shardNumber = addressHash.remainder(shardCount).add(1);
 
   return 'shard_' + shardNumber;
 }

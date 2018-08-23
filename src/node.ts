@@ -45,7 +45,6 @@ export class Node {
       blockHandler: this.blockAddHandler,
     });
     this.accounts = new AccountStorage();
-    this.accounts.issue('Alice', bigInt('1000000'));
 
     getChainsList().forEach(chain => {
       if (isChainValidator(chain, this.peer.id)) {
@@ -160,8 +159,9 @@ export class Node {
             type: TxType.Receipt,
             data: {
               blockHash: block.hash,
-              chain: this.chain,
-              signatures: block.signatures,
+              originalTxHash: tx.hash,
+              to: tx.data.to,
+              amount: tx.data.amount,
             },
           });
 

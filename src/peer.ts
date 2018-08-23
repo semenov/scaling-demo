@@ -84,7 +84,7 @@ export class Peer {
   }
 
   log(...params) {
-    console.log(chalk.cyan(`[Peer ${this.id}]`), ...params);
+    // console.log(chalk.cyan(`[Peer ${this.id}]`), ...params);
   }
 
   private handleConnect = async (socket: net.Socket) => {
@@ -141,8 +141,6 @@ export class Peer {
 
     if (socket) {
       sendMessage(socket, msg);
-    } else {
-      console.error('No interchange peer found');
     }
   }
 
