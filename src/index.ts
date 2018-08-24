@@ -4,7 +4,7 @@ import { Peer } from './peer';
 import { MessageType } from './message';
 import {
   getChainLeader,
-  getChainsByNodeId,
+  getChainByNodeId,
   getChainsList,
   isChainLeader,
   getAddressShard,
@@ -18,7 +18,7 @@ import { createHash } from 'crypto';
 import * as bigInt from 'big-integer';
 
 async function connectToPeers(peer: Peer) {
-  const chain = getChainsByNodeId(peer.id);
+  const chain = getChainByNodeId(peer.id);
   const id = getChainLeader(chain);
   if (id != peer.id) {
     await peer.connectPeer('localhost', 7000 + id);
@@ -26,7 +26,7 @@ async function connectToPeers(peer: Peer) {
 }
 
 async function connectToInterchanges(peer: Peer) {
-  const nodeChain = getChainsByNodeId(peer.id);
+  const nodeChain = getChainByNodeId(peer.id);
   if (isChainLeader(nodeChain, peer.id)) {
     const chains = getChainsList();
     for (const chain of chains) {
@@ -65,40 +65,6 @@ function addAccounts(node: Node, addreses: string[]): void {
   });
 }
 
-function getRandomAddress(addresses: string[]): string {
-  const index = Math.floor(Math.random() * addresses.length);
-
-  return addresses[index];
-}
-
-async function generateTxs(nodes: Node[], addresses: string[]) {
-  while (true) {
-    await sleep(10);
-    const from = getRandomAddress(addresses);
-    const to = getRandomAddress(addresses);
-    const senderShard = getAddressShard(from);
-    const id = getChainLeader(senderShard);
-    const tx = new Tx({
-      type: TxType.ValueTransfer,
-      data: {
-        from,
-        to,
-        amount: '1',
-      },
-    });
-
-    (tx.data as ValueTransfer).sign(from);
-    tx.updateHash();
-
-    await nodes[id + 1].peer.broadcast({
-      type: MessageType.Tx,
-      channel: senderShard,
-      data: tx.serialize(),
-    });
-  }
-
-}
-
 (async () => {
   try {
     console.log('Starting servers');
@@ -113,6 +79,7 @@ async function generateTxs(nodes: Node[], addresses: string[]) {
           host: '127.0.0.1',
           port: 7000 + i,
           interchangePort: 8000 + i,
+          httpPort: 9000 + i,
         },
       });
 
@@ -128,64 +95,6 @@ async function generateTxs(nodes: Node[], addresses: string[]) {
     for (const chain of chains) {
       const id = getChainLeader(chain);
       await connectToInterchanges(nodes[id].peer);
-    }
-
-    await sleep(5000);
-
-    generateTxs(nodes, addresses).catch(e => console.error(e));
-
-    // const tx = new Tx({
-    //   type: TxType.ValueTransfer,
-    //   data: {
-    //     from: 'Alice',
-    //     to: 'Bob',
-    //     amount: '100',
-    //   },
-    // });
-
-    // (tx.data as ValueTransfer).sign('Alice');
-    // tx.updateHash();
-
-    // await nodes[10].peer.broadcast({
-    //   type: MessageType.Tx,
-    //   channel: 'shard_1',
-    //   data: tx.serialize(),
-    // });
-
-    // const block = new Block({
-    //   header: {
-    //     parentBlockHash: '',
-    //     height: 1,
-    //     timestamp: Date.now(),
-    //     chain: 'shard_0',
-    //   },
-    //   body: {
-    //     txs: [tx.serialize()],
-    //   },
-    //   signatures: [],
-    // });
-
-    // block.sign('validator1');
-
-    // await peers[1].broadcast({
-    //   type: MessageType.Block,
-    //   channel: 'shard_0',
-    //   data: block.serialize(),
-    // });
-
-    while (true) {
-      await sleep(5000);
-      console.log('='.repeat(40));
-
-      for (let i = 0; i < nodeNumber; i += 10) {
-        const chain = getChainsByNodeId(i);
-        console.log('Chain:', chain);
-        const block = nodes[i].blocks.getLast();
-        console.log('Block height:', block.header.height);
-        console.log('Block tx number:', block.body.txs.length);
-        console.log('Pending txs:', nodes[i].pendingTransactions.size);
-        console.log('\n');
-      }
     }
 
     console.log('Ready');

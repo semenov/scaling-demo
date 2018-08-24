@@ -2,6 +2,7 @@ import * as net from 'net';
 import chalk from 'chalk';
 import { Message, MessageType, sendMessage, listenMessages } from './message';
 import * as objectHash from 'object-hash';
+import * as Hapi from 'hapi';
 
 function startServer(
   host: string,
@@ -44,6 +45,7 @@ export interface PeerOptions {
   host: string;
   port: number;
   interchangePort: number;
+  httpPort: number;
 }
 
 export class Peer {
@@ -60,6 +62,8 @@ export class Peer {
   isSeed: boolean;
   messageHandlers: Map<MessageType, MessageHandler>;
   knownMessages: Map<net.Socket, string[]>;
+  httpPort: number;
+  httpServer: Hapi.Server;
 
   constructor(options: PeerOptions) {
     this.id = options.id;
@@ -71,11 +75,18 @@ export class Peer {
     this.interchangePeers = new Map();
     this.messageHandlers = new Map();
     this.knownMessages = new Map();
+    this.httpPort = options.httpPort;
+    this.httpServer = new Hapi.Server({
+      host: this.host,
+      port: this.httpPort,
+    });
   }
 
   async start() {
     this.server = await startServer(this.host, this.port, this.handleConnect);
     this.interchangeServer = await startServer(this.host, this.interchangePort, this.handleConnect);
+    await this.httpServer.start();
+
   }
 
   async connectPeer(host: string, port: number): Promise<void> {

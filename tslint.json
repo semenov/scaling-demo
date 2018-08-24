@@ -11,7 +11,8 @@
         "triple-equals": false,
         "no-invalid-this": true,
         "ter-arrow-parens": [true, "as-needed"],
-        "no-floating-promises": true
+        "no-floating-promises": true,
+        "import-name": false
     },
     "rulesDirectory": []
 }

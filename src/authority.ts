@@ -6,7 +6,7 @@ export const validators: Map<string, number[]> = new Map();
 
 for (let i = 0; i < nodeNumber; i++) {
   const peerId = i;
-  const chain = getChainsByNodeId(peerId);
+  const chain = getChainByNodeId(peerId);
 
   const peers = validators.get(chain);
   if (peers) {
@@ -16,7 +16,7 @@ for (let i = 0; i < nodeNumber; i++) {
   }
 }
 
-export function getChainsByNodeId(id: number): string {
+export function getChainByNodeId(id: number): string {
   const shardNumber = Math.floor(id / 10);
   const chain = id < 10 ? 'basechain' : 'shard_' + shardNumber;
 

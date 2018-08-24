@@ -19,6 +19,7 @@ import { BlockStorage } from './block-storage';
 import { ValueTransfer } from './value-transfer';
 import { ShardCommit } from './shard-commit';
 import { Receipt } from './receipt';
+import * as Hapi from 'hapi';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
@@ -58,6 +59,12 @@ export class Node {
     this.peer.setMessageHandler(MessageType.BlockProposal, this.blockProposalHandler);
     this.peer.setMessageHandler(MessageType.BlockVote, this.blockVoteHandler);
     this.peer.setMessageHandler(MessageType.Block, this.blockHandler);
+
+    this.peer.httpServer.route({
+      method: 'GET',
+      path: '/stats',
+      handler: this.statsHandler,
+    });
   }
 
   async start() {
@@ -175,6 +182,17 @@ export class Node {
     }
 
     return true;
+  }
+
+  private statsHandler = (request: Hapi.Request) => {
+    const block = this.blocks.getLast();
+
+    return {
+      chain: this.chain,
+      blockHeight: block.header.height,
+      blockTxNumber: block.body.txs.length,
+      pendingTxNumber: this.pendingTransactions.size,
+    };
   }
 
   private txHandler = async msg => {
