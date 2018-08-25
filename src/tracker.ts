@@ -27,4 +27,4 @@ async function startTracker() {
   await server.start();
 }
 
-startTracker();
+startTracker().catch(e => console.error(e));

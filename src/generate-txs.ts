@@ -34,7 +34,7 @@ async function generateTxs() {
     const port = 9000 + id;
 
     try {
-      console.log(`Sending tx to ${host}:${port}`, tx);
+      // console.log(`Sending tx to ${host}:${port}`, tx);
       await fetch(`http://${host}:${port}/txs`, {
         method: 'POST',
         body:    JSON.stringify(tx.serialize()),

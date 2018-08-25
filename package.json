@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
+    "deploy": "ts-node src/deploy.ts",
+    "node": "ts-node src/run.ts",
     "monitor": "ts-node src/monitor-stats.ts",
     "tx-gen": "ts-node src/generate-txs.ts",
     "tracker": "ts-node src/tracker.ts",

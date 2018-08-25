@@ -12,7 +12,7 @@ import { nodeNumber } from './config';
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
 import { exist } from 'joi';
-import fetch from 'node-fetch';
+import { downloadNodesInfo } from './common';
 
 interface NodeInfo {
   id: number;
@@ -23,12 +23,6 @@ interface NodeInfo {
 }
 
 let nodes: NodeInfo[] = [];
-
-async function downloadNodesInfo(trackerUrl: string): Promise<NodeInfo[]> {
-  const response = await fetch(`${trackerUrl}/nodes`);
-  const data = await response.json();
-  return data.nodes;
-}
 
 function getNodeInfo(id: number) {
   return nodes.find(node => node.id == id);
