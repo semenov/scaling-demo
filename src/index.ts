@@ -1,7 +1,6 @@
 import * as sleep from 'sleep-promise';
 import { Node } from './node';
 import { Peer } from './peer';
-import { MessageType } from './message';
 import {
   getChainLeader,
   getChainByNodeId,
@@ -9,13 +8,10 @@ import {
   isChainLeader,
   getAddressShard,
 } from './authority';
-import { Tx, TxType } from './tx';
-import { Block } from './block';
-import { inspect } from 'util';
-import { ValueTransfer } from './value-transfer';
 import { nodeNumber } from './config';
-import { createHash } from 'crypto';
+
 import * as bigInt from 'big-integer';
+import { fakeAddresses } from './stubs';
 
 async function connectToPeers(peer: Peer) {
   const chain = getChainByNodeId(peer.id);
@@ -38,23 +34,6 @@ async function connectToInterchanges(peer: Peer) {
   }
 }
 
-function calculateHash(input: string): string {
-  const hash = createHash('sha256');
-  hash.update(input);
-  return hash.digest('hex');
-}
-
-function generateFakeAddresses(count: number): string[] {
-  const accounts: string[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const account = calculateHash(String(i));
-    accounts.push(account);
-  }
-
-  return accounts;
-}
-
 function addAccounts(node: Node, addreses: string[]): void {
   const shardAddresses = addreses.filter(address => {
     return getAddressShard(address) == node.chain;
@@ -69,8 +48,6 @@ function addAccounts(node: Node, addreses: string[]): void {
   try {
     console.log('Starting servers');
 
-    const addresses = generateFakeAddresses(100);
-
     const nodes: Node[] = [];
     for (let i = 0; i < nodeNumber; i++) {
       const node = new Node({
@@ -83,7 +60,7 @@ function addAccounts(node: Node, addreses: string[]): void {
         },
       });
 
-      addAccounts(node, addresses);
+      addAccounts(node, fakeAddresses);
 
       await node.start();
       await connectToPeers(node.peer);

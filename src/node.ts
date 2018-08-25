@@ -10,7 +10,7 @@ import {
 } from './authority';
 import { txSchema, blockSchema, blockVoteSchema } from './schema';
 import { validateSchema } from './validation';
-import { Tx, TxType } from './tx';
+import { Tx, TxType, TxInfo } from './tx';
 import { AccountStorage } from './account-storage';
 import * as sleep from 'sleep-promise';
 import { blockTime, blockSize } from './config';
@@ -64,6 +64,19 @@ export class Node {
       method: 'GET',
       path: '/stats',
       handler: this.statsHandler,
+    });
+
+    this.peer.httpServer.route({
+      method: 'POST',
+      path: '/txs',
+      handler: async (request: Hapi.Request) => {
+        await this.txHandler({
+          type: MessageType.Tx,
+          channel: this.chain,
+          data: request.payload,
+        });
+        return { status: 'ok' };
+      },
     });
   }
 

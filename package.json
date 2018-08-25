@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "monitor": "ts-node src/monitor-stats.ts",
+    "tx-gen": "ts-node src/generate-txs.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
