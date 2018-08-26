@@ -10,6 +10,14 @@ async function startTracker() {
 
   server.route({
     method: 'GET',
+    path: '/status',
+    handler: (request: Hapi.Request) => {
+      return { status: 'ok' };
+    },
+  });
+
+  server.route({
+    method: 'GET',
     path: '/nodes',
     handler: (request: Hapi.Request) => {
       return nodes;
@@ -21,6 +29,7 @@ async function startTracker() {
     path: '/nodes',
     handler: async (request: Hapi.Request) => {
       nodes = request.payload;
+      return { status: 'ok' };
     },
   });
 

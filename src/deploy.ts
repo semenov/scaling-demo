@@ -15,7 +15,7 @@ import { fakeAddresses } from './stubs';
 import { NodeInfo } from './common';
 import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 
 async function deployNode(id: number, trackerUrl: string): Promise<NodeInfo> {
   const host = 'localhost';
@@ -32,6 +32,24 @@ async function deployNode(id: number, trackerUrl: string): Promise<NodeInfo> {
   };
 }
 
+async function waitForService(url: string, timeout: number): Promise<void> {
+  const startTime = Date.now();
+  while (true) {
+    if (Date.now() - startTime > timeout) {
+      throw new Error('Service timeout ' + url);
+    }
+
+    try {
+      const response = await fetch(url);
+      if (response.status == 200) {
+        return;
+      }
+    } catch (e) {}
+
+    sleep(50);
+  }
+}
+
 async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> {
   const env = {
     HOST: nodeInfo.host,
@@ -41,18 +59,15 @@ async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> 
     TRACKER_URL: trackerUrl,
   };
 
-  exec('npm run node', { env: { ...process.env, ...env } }, (err, stdout, stderr) => {
-    console.error(err);
-  });
+  spawn('npm', ['run', 'node'], { env: { ...process.env, ...env } }).stderr.pipe(process.stderr);
 }
 
 async function deployTracker(): Promise<string> {
-  exec('npm run tracker', (err, stdout, stderr) => {
-    console.error(err);
-  });
+  spawn('npm', ['run', 'tracker']).stderr.pipe(process.stderr);
 
-  await sleep(1000);
-  return 'http://localhost:6000';
+  const url = 'http://localhost:6000';
+  await waitForService(url + '/status', 1000);
+  return url;
 }
 
 async function deployTxGenerator(trackerUrl: string): Promise<void> {
@@ -60,9 +75,7 @@ async function deployTxGenerator(trackerUrl: string): Promise<void> {
     TRACKER_URL: trackerUrl,
   };
 
-  exec('npm run tx-gen', { env: { ...process.env, ...env } }, (err, stdout, stderr) => {
-    console.error(err);
-  });
+  spawn('npm', ['run', 'tx-gen'], { env: { ...process.env, ...env } }).stderr.pipe(process.stderr);
 }
 
 async function sendNodesInfoToTracker(nodes: NodeInfo[], trackerUrl: string) {
@@ -87,19 +100,21 @@ async function deploy() {
       nodes.push(nodeInfo);
     }
 
+    console.log(nodes);
+
     console.log('Sending info to tracker');
     await sendNodesInfoToTracker(nodes, trackerUrl);
 
-    console.log('Starting nodes');
-    for (let i = 0; i < nodeNumber; i++) {
-      await startNode(nodes[i], trackerUrl);
-    }
+    // console.log('Starting nodes');
+    // for (let i = 0; i < nodeNumber; i++) {
+    //   await startNode(nodes[i], trackerUrl);
+    // }
 
-    console.log('Deploying tx generator');
-    await deployTxGenerator(trackerUrl);
+    // console.log('Deploying tx generator');
+    // await deployTxGenerator(trackerUrl);
 
-    console.log('Monitoring stats');
-    await monitorStats();
+    // console.log('Monitoring stats');
+    // await monitorStats();
 
     console.log('Ready');
   } catch (e) {
