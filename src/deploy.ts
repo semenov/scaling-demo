@@ -8,7 +8,7 @@ import {
   isChainLeader,
   getAddressShard,
 } from './authority';
-import { nodeNumber } from './config';
+import { nodeCount } from './config';
 
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
@@ -43,7 +43,7 @@ async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> 
   };
 
   console.log('Starting node', nodeInfo.id);
-  spawn('npm', ['run', 'node'], { env: { ...process.env, ...env } }).stderr.pipe(process.stderr);
+  spawn('npm', ['run', 'node'], { env: { ...process.env, ...env } }).stdout.pipe(process.stdout);
 
   await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 3000);
 }
@@ -75,6 +75,7 @@ async function sendNodesInfoToTracker(nodes: NodeInfo[], trackerUrl: string) {
 async function deploy() {
   try {
     process.stderr.setMaxListeners(1000);
+    process.stdout.setMaxListeners(1000);
     console.log('Starting servers');
 
     console.log('Deploying tracker');
@@ -82,7 +83,7 @@ async function deploy() {
 
     console.log('Deploying nodes');
     const nodes: NodeInfo[] = [];
-    for (let i = 0; i < nodeNumber; i++) {
+    for (let i = 0; i < nodeCount; i++) {
       const nodeInfo = await deployNode(i, trackerUrl);
       nodes.push(nodeInfo);
     }
@@ -93,7 +94,7 @@ async function deploy() {
     await sendNodesInfoToTracker(nodes, trackerUrl);
 
     console.log('Starting nodes');
-    for (let i = 0; i < nodeNumber; i++) {
+    for (let i = 0; i < nodeCount; i++) {
       await startNode(nodes[i], trackerUrl);
     }
 

@@ -1,10 +1,10 @@
-import { nodeNumber } from './config';
+import { nodeCount, validatorCount, shardCount } from './config';
 import { createHash } from 'crypto';
 import * as bigInt from 'big-integer';
 
 export const validators: Map<string, number[]> = new Map();
 
-for (let i = 0; i < nodeNumber; i++) {
+for (let i = 0; i < nodeCount; i++) {
   const peerId = i;
   const chain = getChainByNodeId(peerId);
 
@@ -17,8 +17,8 @@ for (let i = 0; i < nodeNumber; i++) {
 }
 
 export function getChainByNodeId(id: number): string {
-  const shardNumber = Math.floor(id / 10);
-  const chain = id < 10 ? 'basechain' : 'shard_' + shardNumber;
+  const shardNumber = Math.floor(id / validatorCount);
+  const chain = id < validatorCount ? 'basechain' : 'shard_' + shardNumber;
 
   return chain;
 }
@@ -54,7 +54,6 @@ export function isChainLeader(chain: string, id: number): boolean {
 }
 
 export function getAddressShard(address: string): string {
-  const shardCount = getChainsList().length - 1;
   const hash = createHash('sha256');
   hash.update(address);
   const addressHashString = hash.digest('hex');

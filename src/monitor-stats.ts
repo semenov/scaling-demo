@@ -1,5 +1,4 @@
 import * as sleep from 'sleep-promise';
-import { nodeNumber } from './config';
 import { getChainByNodeId, getChainsList, getChainLeader } from './authority';
 import fetch from 'node-fetch';
 import { downloadNodesInfo, getNodeInfo } from './common';

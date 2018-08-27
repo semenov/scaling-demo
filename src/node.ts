@@ -247,8 +247,14 @@ export class Node {
 
   checkBlock(block: Block): boolean {
     const chain = block.header.chain;
-    if (chain != this.chain) return false;
-    if (block.body.txs.length >= blockSize) return false;
+    if (chain != this.chain) {
+      this.peer.log('Wrong chain');
+      return false;
+    }
+    if (block.body.txs.length > blockSize) {
+      this.peer.log('Wrong block size');
+      return false;
+    }
 
     for (const txData of block.body.txs) {
       const tx = new Tx(txData);
@@ -275,7 +281,6 @@ export class Node {
     const block = new Block(msg.data);
 
     this.peer.broadcast(msg);
-
     if (this.checkBlock(block)) {
       const publicKey = getKeyByID(this.peer.id);
 

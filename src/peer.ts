@@ -95,7 +95,7 @@ export class Peer {
   }
 
   log(...params) {
-    // console.log(chalk.cyan(`[Peer ${this.id}]`), ...params);
+    console.log(chalk.cyan(`[Peer ${this.id}]`), ...params);
   }
 
   private handleConnect = async (socket: net.Socket) => {
@@ -105,7 +105,7 @@ export class Peer {
   }
 
   private handleMessage = async (msg: Message, socket: net.Socket) => {
-    this.log('Message handler', msg);
+    // this.log('Message handler', msg);
 
     if (!this.channels.includes(msg.channel)) return;
 

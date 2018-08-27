@@ -8,10 +8,8 @@ import {
   isChainLeader,
   getAddressShard,
 } from './authority';
-import { nodeNumber } from './config';
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
-import { exist } from 'joi';
 import { downloadNodesInfo, waitForService, getNodeInfo, NodeInfo } from './common';
 
 let nodes: NodeInfo[] = [];

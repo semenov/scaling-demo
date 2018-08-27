@@ -8,7 +8,7 @@ import {
   isChainLeader,
   getAddressShard,
 } from './authority';
-import { nodeNumber } from './config';
+import { nodeCount } from './config';
 
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
@@ -49,7 +49,7 @@ function addAccounts(node: Node, addreses: string[]): void {
     console.log('Starting servers');
 
     const nodes: Node[] = [];
-    for (let i = 0; i < nodeNumber; i++) {
+    for (let i = 0; i < nodeCount; i++) {
       const node = new Node({
         peerOptions : {
           id: i,
