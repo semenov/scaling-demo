@@ -12,27 +12,15 @@ import { nodeNumber } from './config';
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
 import { exist } from 'joi';
-import { downloadNodesInfo, waitForService } from './common';
-
-interface NodeInfo {
-  id: number;
-  host: string;
-  port: number;
-  interchangePort: number;
-  httpPort: number;
-}
+import { downloadNodesInfo, waitForService, getNodeInfo, NodeInfo } from './common';
 
 let nodes: NodeInfo[] = [];
-
-function getNodeInfo(id: number) {
-  return nodes.find(node => node.id == id);
-}
 
 async function connectToPeers(peer: Peer) {
   const chain = getChainByNodeId(peer.id);
   const id = getChainLeader(chain);
   if (id != peer.id) {
-    const nodeInfo = getNodeInfo(id);
+    const nodeInfo = getNodeInfo(nodes, id);
     if (nodeInfo) {
       await peer.connectPeer(nodeInfo.host, nodeInfo.port);
     }
@@ -46,7 +34,7 @@ async function connectToInterchanges(peer: Peer) {
     for (const chain of chains) {
       const id = getChainLeader(chain);
       if (id != peer.id) {
-        const nodeInfo = getNodeInfo(id);
+        const nodeInfo = getNodeInfo(nodes, id);
         if (nodeInfo) {
           (async () => {
             try {
