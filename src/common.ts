@@ -15,6 +15,10 @@ export async function downloadNodesInfo(trackerUrl: string): Promise<NodeInfo[]>
   return data.nodes;
 }
 
+export function getNodeInfo(nodes: NodeInfo[], id: number): NodeInfo | undefined {
+  return nodes.find(node => node.id == id);
+}
+
 export async function waitForService(url: string, timeout: number): Promise<void> {
   const startTime = Date.now();
   while (true) {

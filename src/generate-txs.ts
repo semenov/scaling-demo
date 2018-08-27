@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 import * as sleep from 'sleep-promise';
 import { TxType, Tx } from './tx';
 import { ValueTransfer } from './value-transfer';
+import { downloadNodesInfo, getNodeInfo, NodeInfo } from './common';
 
 function getRandomAddress(addresses: string[]): string {
   const index = Math.floor(Math.random() * addresses.length);
@@ -12,6 +13,13 @@ function getRandomAddress(addresses: string[]): string {
 }
 
 async function generateTxs() {
+  if (process.env['TRACKER_URL'] === undefined) {
+    console.error('You should specify TRACKER_URL env variable');
+    return;
+  }
+  const trackerUrl = String(process.env['TRACKER_URL']);
+  const nodes = await downloadNodesInfo(trackerUrl);
+
   while (true) {
     await sleep(1);
     const from = getRandomAddress(fakeAddresses);
@@ -30,8 +38,15 @@ async function generateTxs() {
     (tx.data as ValueTransfer).sign(from);
     tx.updateHash();
 
-    const host = 'localhost';
-    const port = 9000 + id;
+    const nodeInfo = getNodeInfo(nodes, id);
+
+    if (!nodeInfo) {
+      console.error('Node not found', id);
+      continue;
+    }
+
+    const host = nodeInfo.host;
+    const port = nodeInfo.httpPort;
 
     try {
       // console.log(`Sending tx to ${host}:${port}`, tx);
