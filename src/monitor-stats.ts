@@ -1,21 +1,32 @@
 import * as sleep from 'sleep-promise';
 import { nodeNumber } from './config';
-import { getChainByNodeId } from './authority';
+import { getChainByNodeId, getChainsList, getChainLeader } from './authority';
 import fetch from 'node-fetch';
+import { downloadNodesInfo, getNodeInfo } from './common';
 
-export async function monitorStats() {
+export async function monitorStats(trackerUrl) {
   while (true) {
     await sleep(5000);
     console.log('='.repeat(40), '\n');
 
-    for (let i = 0; i < nodeNumber; i += 10) {
-      const host = 'localhost';
-      const port = 9000 + i;
+    const chains = getChainsList();
+    const nodes = await downloadNodesInfo(trackerUrl);
+
+    for (const chain of chains) {
+      const id = getChainLeader(chain);
+      const nodeInfo = getNodeInfo(nodes, id);
+
+      if (!nodeInfo) {
+        console.error('Node not found', id);
+        continue;
+      }
+
+      const host = nodeInfo.host;
+      const port = nodeInfo.httpPort;
 
       const response = await fetch(`http://${host}:${port}/stats`);
       const data = await response.json();
 
-      // get data from node by http
       console.log(data);
       console.log('\n');
     }

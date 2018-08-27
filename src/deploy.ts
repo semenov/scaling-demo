@@ -101,7 +101,7 @@ async function deploy() {
     await deployTxGenerator(trackerUrl);
 
     console.log('Monitoring stats');
-    await monitorStats();
+    await monitorStats(trackerUrl);
 
     console.log('Ready');
   } catch (e) {
