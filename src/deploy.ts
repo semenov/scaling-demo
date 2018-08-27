@@ -12,7 +12,7 @@ import { nodeNumber } from './config';
 
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
-import { NodeInfo } from './common';
+import { NodeInfo, waitForService } from './common';
 import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
 import { exec, spawn } from 'child_process';
@@ -32,34 +32,20 @@ async function deployNode(id: number, trackerUrl: string): Promise<NodeInfo> {
   };
 }
 
-async function waitForService(url: string, timeout: number): Promise<void> {
-  const startTime = Date.now();
-  while (true) {
-    if (Date.now() - startTime > timeout) {
-      throw new Error('Service timeout ' + url);
-    }
-
-    try {
-      const response = await fetch(url);
-      if (response.status == 200) {
-        return;
-      }
-    } catch (e) {}
-
-    sleep(50);
-  }
-}
-
 async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> {
   const env = {
+    NODE_ID: nodeInfo.id,
     HOST: nodeInfo.host,
     PORT: nodeInfo.port,
-    INERCHANGE_PORT: nodeInfo.interchangePort,
+    INTERCHANGE_PORT: nodeInfo.interchangePort,
     HTTP_PORT: nodeInfo.httpPort,
     TRACKER_URL: trackerUrl,
   };
 
+  console.log('Starting node', nodeInfo.id);
   spawn('npm', ['run', 'node'], { env: { ...process.env, ...env } }).stderr.pipe(process.stderr);
+
+  await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 3000);
 }
 
 async function deployTracker(): Promise<string> {
@@ -88,6 +74,7 @@ async function sendNodesInfoToTracker(nodes: NodeInfo[], trackerUrl: string) {
 
 async function deploy() {
   try {
+    process.stderr.setMaxListeners(1000);
     console.log('Starting servers');
 
     console.log('Deploying tracker');
@@ -105,16 +92,16 @@ async function deploy() {
     console.log('Sending info to tracker');
     await sendNodesInfoToTracker(nodes, trackerUrl);
 
-    // console.log('Starting nodes');
-    // for (let i = 0; i < nodeNumber; i++) {
-    //   await startNode(nodes[i], trackerUrl);
-    // }
+    console.log('Starting nodes');
+    for (let i = 0; i < nodeNumber; i++) {
+      await startNode(nodes[i], trackerUrl);
+    }
 
-    // console.log('Deploying tx generator');
-    // await deployTxGenerator(trackerUrl);
+    console.log('Deploying tx generator');
+    await deployTxGenerator(trackerUrl);
 
-    // console.log('Monitoring stats');
-    // await monitorStats();
+    console.log('Monitoring stats');
+    await monitorStats();
 
     console.log('Ready');
   } catch (e) {

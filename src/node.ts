@@ -62,6 +62,14 @@ export class Node {
 
     this.peer.httpServer.route({
       method: 'GET',
+      path: '/status',
+      handler: (request: Hapi.Request) => {
+        return { status: 'ok' };
+      },
+    });
+
+    this.peer.httpServer.route({
+      method: 'GET',
       path: '/stats',
       handler: this.statsHandler,
     });
@@ -87,6 +95,7 @@ export class Node {
 
   async startBlockProduction() {
     this.createGenesisBlock();
+    await sleep(15000);
     while (true) {
       await sleep(blockTime);
       if (this.isLeader) {

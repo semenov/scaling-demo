@@ -12,7 +12,7 @@ import { nodeNumber } from './config';
 import * as bigInt from 'big-integer';
 import { fakeAddresses } from './stubs';
 import { exist } from 'joi';
-import { downloadNodesInfo } from './common';
+import { downloadNodesInfo, waitForService } from './common';
 
 interface NodeInfo {
   id: number;
@@ -48,7 +48,14 @@ async function connectToInterchanges(peer: Peer) {
       if (id != peer.id) {
         const nodeInfo = getNodeInfo(id);
         if (nodeInfo) {
-          await peer.connectChannelPeer(chain, nodeInfo.host, nodeInfo.interchangePort);
+          (async () => {
+            try {
+              await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 60000);
+              await peer.connectChannelPeer(chain, nodeInfo.host, nodeInfo.interchangePort);
+            } catch (e) {
+              console.error('Peer interchange error', peer.id, e);
+            }
+          })();
         }
       }
     }
