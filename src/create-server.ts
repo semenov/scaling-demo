@@ -2,8 +2,13 @@ import * as AWS from 'aws-sdk';
 import * as path from 'path';
 import * as util from 'util';
 import * as sleep from 'sleep-promise';
+import * as NodeSSH from 'node-ssh';
 
-AWS.config.loadFromPath(path.join(__dirname, '../aws-config.json'));
+const awsConfigFile = path.join(__dirname, '../aws-config.json');
+AWS.config.loadFromPath(awsConfigFile);
+
+const sshKeyFile = path.join(__dirname, '../id_rsa');
+
 const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
 
 function getIpFromDescription(description) {
@@ -55,6 +60,25 @@ function isInstanceReady(data) {
     }
 
     console.log('Instance ready', ip);
+
+    const ssh = new NodeSSH();
+
+    await ssh.connect({
+      host: ip,
+      username: 'ubuntu',
+      privateKey: sshKeyFile,
+    });
+
+    console.log('Connected to host via ssh');
+
+    const commandResult = await ssh.execCommand(
+      'curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -',
+    );
+    console.log(commandResult);
+
+    const command2Result = await ssh.execCommand('sudo apt-get install -y nodejs');
+    console.log(command2Result);
+    ssh.dispose();
 
     // console.log('Waiting for instance status ok');
     // const instanceStatus = await ec2.waitFor('instanceStatusOk', {
