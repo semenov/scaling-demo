@@ -1,9 +1,20 @@
 import * as Hapi from 'hapi';
 
 async function startTracker() {
+  if (process.env['HOST'] === undefined) {
+    throw new Error('You should specify HOST env variable');
+  }
+
+  if (process.env['PORT'] === undefined) {
+    throw new Error('You should specify PORT env variable');
+  }
+
+  const host = String(process.env['HOST']);
+  const port = Number(process.env['PORT']);
+
   const server = new Hapi.Server({
-    host: 'localhost',
-    port: 6000,
+    host,
+    port,
   });
 
   let nodes = {};
