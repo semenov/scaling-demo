@@ -87,7 +87,8 @@ export async function runCommand(host: string, command: string, env: object): Pr
     privateKey: sshKeyFile,
   });
 
-  const execString = envToString(env) + `nohup npm run ${command} &`;
+  const execString = envToString(env) + `nohup npm run ${command} > /tmp/app.log 2>&1 <&- &`;
+  console.log('Running command', host, execString);
   const commandResult = await ssh.execCommand(execString, { cwd: '/home/ubuntu/scaling-demo' });
   console.log(commandResult);
   ssh.dispose();
