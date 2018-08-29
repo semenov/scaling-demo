@@ -20,6 +20,7 @@ async function connectToPeers(peer: Peer) {
   if (id != peer.id) {
     const nodeInfo = getNodeInfo(nodes, id);
     if (nodeInfo) {
+      await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 60000);
       await peer.connectPeer(nodeInfo.host, nodeInfo.port);
     }
   }
