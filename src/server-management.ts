@@ -50,7 +50,7 @@ export async function createServer(): Promise<string> {
 
   const ip = getIpFromDescription(description);
 
-  console.log('Waiting for instance ready');
+  console.log('Waiting for instance ready', ip);
 
   await ec2.waitFor('instanceStatusOk', {
     InstanceIds: [instanceId],
@@ -66,7 +66,7 @@ export async function createServer(): Promise<string> {
     privateKey: sshKeyFile,
   });
 
-  console.log('Connected to host via ssh');
+  console.log('Connected to host via ssh', ip);
 
   await ssh.putFile(installScriptFile, 'install.sh');
 

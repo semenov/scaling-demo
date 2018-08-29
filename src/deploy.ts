@@ -5,6 +5,14 @@ import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
 import { createServer, runCommand } from './server-management';
 
+/*
+Как должно быть для ускорения дебага:
+1. Cоздаем необходимое количество инстансов в параллели. Ставим на них ноду
+2. Чистим все истансы, убиваем нодовские процессы. Клоним репу
+3. Атомарно распределяем инстансы под разные нужды
+4. Поочередно запускаем на инстансах необходимые приложения
+*/
+
 async function deployNode(id: number): Promise<NodeInfo> {
   const host = await createServer() || '';
   const port = 7000 + id;
@@ -23,7 +31,7 @@ async function deployNode(id: number): Promise<NodeInfo> {
 async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> {
   const env = {
     NODE_ID: nodeInfo.id,
-    HOST: nodeInfo.host,
+    HOST: '0.0.0.0',
     PORT: nodeInfo.port,
     INTERCHANGE_PORT: nodeInfo.interchangePort,
     HTTP_PORT: nodeInfo.httpPort,
@@ -33,7 +41,7 @@ async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> 
   console.log('Starting node', nodeInfo.id);
   runCommand(nodeInfo.host, 'node', env);
 
-  await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 3000);
+  await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 20000);
 }
 
 async function deployTracker(): Promise<string> {
@@ -41,14 +49,14 @@ async function deployTracker(): Promise<string> {
   const port = 6000;
 
   const env = {
-    HOST: host,
+    HOST: '0.0.0.0',
     PORT: port,
   };
 
   runCommand(host, 'tracker', env);
 
   const url = `http://${host}:${port}`;
-  await waitForService(url + '/status', 1000);
+  await waitForService(url + '/status', 20000);
   return url;
 }
 
@@ -97,9 +105,13 @@ async function deploy() {
     await sendNodesInfoToTracker(nodes, trackerUrl);
 
     console.log('Starting nodes');
+    const startNodePromises: Promise<any>[] = [];
     for (let i = 0; i < nodeCount; i++) {
-      await startNode(nodes[i], trackerUrl);
+      const startNodePromise = startNode(nodes[i], trackerUrl);
+      startNodePromises.push(startNodePromise);
     }
+
+    await Promise.all(startNodePromises);
 
     console.log('Deploying tx generator');
     await deployTxGenerator(trackerUrl);
