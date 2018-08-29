@@ -1,24 +1,12 @@
 import * as sleep from 'sleep-promise';
-import { Node } from './node';
-import { Peer } from './peer';
-import {
-  getChainLeader,
-  getChainByNodeId,
-  getChainsList,
-  isChainLeader,
-  getAddressShard,
-} from './authority';
 import { nodeCount } from './config';
-
-import * as bigInt from 'big-integer';
-import { fakeAddresses } from './stubs';
 import { NodeInfo, waitForService } from './common';
 import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
-import { exec, spawn } from 'child_process';
+import { createServer, runCommand } from './server-management';
 
-async function deployNode(id: number, trackerUrl: string): Promise<NodeInfo> {
-  const host = 'localhost';
+async function deployNode(id: number): Promise<NodeInfo> {
+  const host = await createServer() || '';
   const port = 7000 + id;
   const interchangePort = 8000 + id;
   const httpPort = 9000 + id;
@@ -43,25 +31,34 @@ async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> 
   };
 
   console.log('Starting node', nodeInfo.id);
-  spawn('npm', ['run', 'node'], { env: { ...process.env, ...env } }).stdout.pipe(process.stdout);
+  runCommand(nodeInfo.host, 'node', env);
 
   await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 3000);
 }
 
 async function deployTracker(): Promise<string> {
-  spawn('npm', ['run', 'tracker']).stderr.pipe(process.stderr);
+  const host = await createServer();
+  const port = 6000;
 
-  const url = 'http://localhost:6000';
+  const env = {
+    HOST: host,
+    PORT: port,
+  };
+
+  runCommand(host, 'tracker', env);
+
+  const url = `http://${host}:${port}`;
   await waitForService(url + '/status', 1000);
   return url;
 }
 
 async function deployTxGenerator(trackerUrl: string): Promise<void> {
+  const host = await createServer();
   const env = {
     TRACKER_URL: trackerUrl,
   };
 
-  spawn('npm', ['run', 'tx-gen'], { env: { ...process.env, ...env } }).stderr.pipe(process.stderr);
+  runCommand(host, 'tx-gen', env);
 }
 
 async function sendNodesInfoToTracker(nodes: NodeInfo[], trackerUrl: string) {
@@ -83,10 +80,16 @@ async function deploy() {
 
     console.log('Deploying nodes');
     const nodes: NodeInfo[] = [];
+    const nodePromises: Promise<any>[] = [];
     for (let i = 0; i < nodeCount; i++) {
-      const nodeInfo = await deployNode(i, trackerUrl);
-      nodes.push(nodeInfo);
+      const nodePromise = (async() => {
+        const nodeInfo = await deployNode(i);
+        nodes.push(nodeInfo);
+      })();
+      nodePromises.push(nodePromise);
     }
+
+    await Promise.all(nodePromises);
 
     console.log(nodes);
 
