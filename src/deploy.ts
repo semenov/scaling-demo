@@ -3,7 +3,7 @@ import { nodeCount } from './config';
 import { NodeInfo, waitForService } from './common';
 import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
-import { createServer, runCommand } from './server-management';
+import { createServer, runCommand, getRunningServers, prepareServer } from './server-management';
 
 /*
 Как должно быть для ускорения дебага:
@@ -13,8 +13,28 @@ import { createServer, runCommand } from './server-management';
 4. Поочередно запускаем на инстансах необходимые приложения
 */
 
-async function deployNode(id: number): Promise<NodeInfo> {
-  const host = await createServer() || '';
+async function reserveServers(): Promise<string[]> {
+  const serverCount = nodeCount + 2; // Nodes plus tracker and tx gen
+  const existingIps = await getRunningServers();
+  const createServerCount = serverCount - existingIps.length;
+
+  const serverPromises: Promise<string>[] = [];
+  for (let i = 0; i < createServerCount; i++) {
+    const serverPromise = createServer();
+    serverPromises.push(serverPromise);
+  }
+  const newIps = await Promise.all(serverPromises);
+  const ips = [...existingIps, ...newIps];
+
+  return ips;
+}
+
+async function prepareServers(ips: string[]): Promise<void> {
+  const promises = ips.map(ip => prepareServer(ip));
+  await Promise.all(promises);
+}
+
+function constructNodeInfo(host: string, id: number): NodeInfo {
   const port = 7000 + id;
   const interchangePort = 8000 + id;
   const httpPort = 9000 + id;
@@ -44,8 +64,7 @@ async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> 
   await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 20000);
 }
 
-async function deployTracker(): Promise<string> {
-  const host = await createServer();
+async function startTracker(host: string): Promise<string> {
   const port = 6000;
 
   const env = {
@@ -60,8 +79,7 @@ async function deployTracker(): Promise<string> {
   return url;
 }
 
-async function deployTxGenerator(trackerUrl: string): Promise<void> {
-  const host = await createServer();
+async function startTxGenerator(host: string, trackerUrl: string): Promise<void> {
   const env = {
     TRACKER_URL: trackerUrl,
   };
@@ -79,25 +97,22 @@ async function sendNodesInfoToTracker(nodes: NodeInfo[], trackerUrl: string) {
 
 async function deploy() {
   try {
-    process.stderr.setMaxListeners(1000);
-    process.stdout.setMaxListeners(1000);
+    console.log('Reserving servers');
+    const ips = await reserveServers();
+
+    console.log('Preparing servers');
+    await prepareServers(ips);
+
     console.log('Starting servers');
 
-    console.log('Deploying tracker');
-    const trackerUrl = await deployTracker();
+    console.log('Starting tracker');
+    const trackerUrl = await startTracker(ips.pop() as string);
 
-    console.log('Deploying nodes');
     const nodes: NodeInfo[] = [];
-    const nodePromises: Promise<any>[] = [];
     for (let i = 0; i < nodeCount; i++) {
-      const nodePromise = (async() => {
-        const nodeInfo = await deployNode(i);
-        nodes.push(nodeInfo);
-      })();
-      nodePromises.push(nodePromise);
+      const nodeInfo = await constructNodeInfo(ips.pop() as string, i);
+      nodes.push(nodeInfo);
     }
-
-    await Promise.all(nodePromises);
 
     console.log(nodes);
 
@@ -113,8 +128,8 @@ async function deploy() {
 
     await Promise.all(startNodePromises);
 
-    console.log('Deploying tx generator');
-    await deployTxGenerator(trackerUrl);
+    console.log('Starting tx generator');
+    await startTxGenerator(ips.pop() as string, trackerUrl);
 
     console.log('Monitoring stats');
     await monitorStats(trackerUrl);

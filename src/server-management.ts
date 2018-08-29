@@ -8,6 +8,7 @@ import * as waitPort from 'wait-port';
 const awsConfigFile = path.join(__dirname, '../aws-config.json');
 const sshKeyFile = path.join(__dirname, '../id_rsa');
 const installScriptFile = path.join(__dirname, '../install.sh');
+const prepareScriptFile = path.join(__dirname, '../prepare.sh');
 
 AWS.config.loadFromPath(awsConfigFile);
 
@@ -89,8 +90,27 @@ export async function runCommand(host: string, command: string, env: object): Pr
 
   const execString = envToString(env) + `nohup npm run ${command} > /tmp/app.log 2>&1 <&- &`;
   console.log('Running command', host, execString);
-  const commandResult = await ssh.execCommand(execString, { cwd: '/home/ubuntu/scaling-demo' });
-  console.log(commandResult);
+  await ssh.execCommand(execString, { cwd: '/home/ubuntu/scaling-demo' });
+  ssh.dispose();
+}
+
+export async function prepareServer(host: string): Promise<void> {
+  const ssh = new NodeSSH();
+
+  console.log('Preparing server', host);
+  await ssh.connect({
+    host,
+    username: 'ubuntu',
+    privateKey: sshKeyFile,
+  });
+
+  await ssh.putFile(prepareScriptFile, 'prepare.sh');
+  await ssh.execCommand(
+    'sudo bash /home/ubuntu/prepare.sh > prepare.log  2>&1',
+  );
+
+  console.log('Server prepared', host);
+
   ssh.dispose();
 }
 

@@ -1,16 +1,17 @@
-import { runCommand } from './server-management';
+import * as AWS from 'aws-sdk';
+import * as path from 'path';
+import * as util from 'util';
 
-const host = '18.191.62.152';
-const port = 6000;
+const awsConfigFile = path.join(__dirname, '../aws-config.json');
+
+AWS.config.loadFromPath(awsConfigFile);
+
+const ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
 
 async function run() {
   try {
-    await runCommand(host, 'tracker', {
-      HOST: '0.0.0.0',
-      PORT: port,
-    });
-
-    console.log('Command executed');
+    const description = await ec2.describeInstances({}).promise();
+    console.log(util.inspect(description, false, null));
   } catch (e) {
     console.log(e);
   }
