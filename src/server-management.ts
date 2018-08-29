@@ -93,3 +93,19 @@ export async function runCommand(host: string, command: string, env: object): Pr
   console.log(commandResult);
   ssh.dispose();
 }
+
+export async function getRunningServers(): Promise<string[]> {
+  const ips: string[] = [];
+  const description = await ec2.describeInstances().promise();
+  const reservations: AWS.EC2.Reservation[] = description.Reservations || [];
+  for (const reservation of reservations) {
+    if (!reservation.Instances) continue;
+    const instance = reservation.Instances[0];
+    if (!instance || !instance.State) continue;
+    if (instance.State.Name == 'running' && instance.PublicIpAddress) {
+      ips.push(instance.PublicIpAddress);
+    }
+  }
+
+  return ips;
+}
