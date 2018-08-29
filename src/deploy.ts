@@ -124,6 +124,7 @@ async function deploy() {
     for (let i = 0; i < nodeCount; i++) {
       const startNodePromise = startNode(nodes[i], trackerUrl);
       startNodePromises.push(startNodePromise);
+      await sleep(50);
     }
 
     await Promise.all(startNodePromises);
