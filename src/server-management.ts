@@ -71,8 +71,7 @@ export async function createServer(): Promise<string> {
 
   await ssh.putFile(installScriptFile, 'install.sh');
 
-  const commandResult = await ssh.execCommand('sudo bash /home/ubuntu/install.sh > install.log');
-  console.log(commandResult);
+  await ssh.execCommand('sudo bash /home/ubuntu/install.sh > install.log 2>&1 ');
 
   ssh.dispose();
 
