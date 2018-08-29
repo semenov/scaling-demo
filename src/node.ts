@@ -95,7 +95,7 @@ export class Node {
 
   async startBlockProduction() {
     this.createGenesisBlock();
-    await sleep(15000);
+    await sleep(30000);
     while (true) {
       await sleep(blockTime);
       if (this.isLeader) {
