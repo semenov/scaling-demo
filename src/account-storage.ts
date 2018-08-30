@@ -84,7 +84,6 @@ export class AccountStorage {
     return newAccount;
   }
 
-
   transact(from: string, to: string, amount: bigInt.BigInteger): boolean {
     if (!this.checkTransaction(from, amount)) return false;
 

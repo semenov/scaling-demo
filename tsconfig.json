@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
       "lib": [ "es2017" ],
-      "target": "ES2016",
       "downlevelIteration": true,
       "strictNullChecks": true
     }
