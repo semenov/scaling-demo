@@ -25,10 +25,20 @@ function encodeMessage(msg: Message): string {
 }
 
 export function sendMessage(socket: Socket, msg: Message) {
+  console.time('sendMessage');
+  console.time('sendMessage validateSchema');
   validateSchema(messageSchema, msg);
+  console.timeEnd('sendMessage validateSchema');
   if (socket) {
-    socket.write(encodeMessage(msg) + '\n');
+    console.time('sendMessage encodeMessage');
+    const encodedMessage = encodeMessage(msg);
+    console.timeEnd('sendMessage encodeMessage');
+    console.time('sendMessage socket.write');
+    socket.write(encodedMessage + '\n');
+    console.time('sendMessage socket.write');
   }
+
+  console.timeEnd('sendMessage');
 }
 
 export function listenMessages(
