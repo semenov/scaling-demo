@@ -228,19 +228,19 @@ export class Node {
 
   private txHandler = async msg => {
     console.time('tx handler');
-    console.time('tx scema validation');
-    validateSchema(txSchema, msg.data);
-    console.timeEnd('tx scema validation');
-    console.time('tx object construction');
+    // console.time('tx scema validation');
+    // validateSchema(txSchema, msg.data);
+    // console.timeEnd('tx scema validation');
     const tx = new Tx(msg.data);
-    console.timeEnd('tx object construction');
 
     if (this.pendingTransactions.has(tx.hash)) return;
 
     if (tx.data instanceof ValueTransfer) {
       console.time('tx verification');
-      if (tx.verifyHash() && tx.data.verifySignature(tx.data.from)) {
-        console.timeEnd('tx verification');
+      const isTxVerified = tx.verifyHash() && tx.data.verifySignature(tx.data.from);
+      console.timeEnd('tx verification');
+      if (isTxVerified) {
+        console.log('tx verified, going to broadcast');
         this.pendingTransactions.set(tx.hash, tx);
         console.time('tx broadcast');
         this.peer.broadcast(msg);
