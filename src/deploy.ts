@@ -1,5 +1,5 @@
 import * as sleep from 'sleep-promise';
-import { nodeCount } from './config';
+import { nodeCount, txGeneratorsCount } from './config';
 import { NodeInfo, waitForService } from './common';
 import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
@@ -14,7 +14,7 @@ import { createServer, runCommand, getRunningServers, prepareServer } from './se
 */
 
 async function reserveServers(): Promise<string[]> {
-  const serverCount = nodeCount + 2; // Nodes plus tracker and tx gen
+  const serverCount = nodeCount + 1 + txGeneratorsCount; // Nodes plus tracker and tx gen
   const existingIps = await getRunningServers();
   const createServerCount = serverCount - existingIps.length;
 
@@ -22,6 +22,7 @@ async function reserveServers(): Promise<string[]> {
   for (let i = 0; i < createServerCount; i++) {
     const serverPromise = createServer();
     serverPromises.push(serverPromise);
+    await sleep(500);
   }
   const newIps = await Promise.all(serverPromises);
   const ips = [...existingIps, ...newIps];
@@ -129,8 +130,11 @@ async function deploy() {
 
     await Promise.all(startNodePromises);
 
-    console.log('Starting tx generator');
-    await startTxGenerator(ips.pop() as string, trackerUrl);
+    console.log('Starting tx generators');
+    for (let i = 0; i < txGeneratorsCount; i++) {
+      await startTxGenerator(ips.pop() as string, trackerUrl);
+      await sleep(50);
+    }
 
     console.log('Monitoring stats');
     await monitorStats(trackerUrl);

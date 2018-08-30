@@ -55,7 +55,7 @@ function addAccounts(node: Node, addreses: string[]): void {
   });
 
   shardAddresses.forEach(address => {
-    node.accounts.issue(address, bigInt('1000000'));
+    node.accounts.issue(address, bigInt('10000000'));
   });
 }
 

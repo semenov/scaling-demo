@@ -5,6 +5,14 @@ import * as sleep from 'sleep-promise';
 import * as NodeSSH from 'node-ssh';
 import * as waitPort from 'wait-port';
 
+/*
+Zones:
+us-east-1
+us-east-2
+us-west-2
+
+*/
+
 const awsConfigFile = path.join(__dirname, '../aws-config.json');
 const sshKeyFile = path.join(__dirname, '../id_rsa');
 const installScriptFile = path.join(__dirname, '../install.sh');
