@@ -105,18 +105,24 @@ export async function prepareServer(host: string): Promise<void> {
   const ssh = new NodeSSH();
 
   console.log('Preparing server', host);
-  await ssh.connect({
-    host,
-    username: 'ubuntu',
-    privateKey: sshKeyFile,
-  });
 
-  await ssh.putFile(prepareScriptFile, 'prepare.sh');
-  await ssh.execCommand(
-    'sudo bash /home/ubuntu/prepare.sh > prepare.log  2>&1',
-  );
+  try {
+    await ssh.connect({
+      host,
+      username: 'ubuntu',
+      privateKey: sshKeyFile,
+    });
 
-  console.log('Server prepared', host);
+    await ssh.putFile(prepareScriptFile, 'prepare.sh');
+    await ssh.execCommand(
+      'sudo bash /home/ubuntu/prepare.sh > prepare.log  2>&1',
+    );
+
+    console.log('Server prepared', host);
+  } catch (e) {
+    console.error('Error with server preparing', host, e);
+    throw e;
+  }
 
   ssh.dispose();
 }

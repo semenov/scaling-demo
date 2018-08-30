@@ -208,11 +208,20 @@ export class Node {
 
   private statsHandler = (request: Hapi.Request) => {
     const block = this.blocks.getLast();
+    let totalTxNumber = 0;
+    this.blocks.blocks.forEach(block => {
+      totalTxNumber += block.body.txs.length;
+    });
+
+    const avgTxNumber = totalTxNumber / block.header.height;
 
     return {
       chain: this.chain,
       blockHeight: block.header.height,
+      blockHash: block.hash,
       blockTxNumber: block.body.txs.length,
+      totalTxNumber,
+      avgTxNumber,
       pendingTxNumber: this.pendingTransactions.size,
     };
   }
