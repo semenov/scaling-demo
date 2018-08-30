@@ -3,20 +3,23 @@ import { signObject, verifyObjectSignature } from './signature';
 import { ValueTransfer, ValueTransferInfo } from './value-transfer';
 import { ShardCommit, ShardCommitInfo } from './shard-commit';
 import { Receipt, ReceiptInfo } from './receipt';
+import { SetContract, SetContractInfo, ExecuteContract, ExecuteContractInfo } from './gvm';
 
 export interface TxInfo {
   type: TxType;
-  data: ValueTransferInfo | ShardCommitInfo | ReceiptInfo;
+  data: ValueTransferInfo | ShardCommitInfo | ReceiptInfo | SetContractInfo | ExecuteContractInfo;
   hash?: string;
 }
 
 export enum TxType {
+  ExecuteContract = 'execute_contract',
+  SetContract = 'set_contract',
   ValueTransfer = 'value_transfer',
   ShardCommit = 'shard_commit',
   Receipt = 'receipt',
 }
 
-type TxData = ValueTransfer | ShardCommit | Receipt;
+type TxData = ValueTransfer | ShardCommit | Receipt | SetContract | ExecuteContract;
 
 export class Tx {
   type: TxType;
@@ -36,6 +39,10 @@ export class Tx {
 
     if (this.type == TxType.Receipt) {
       this.data = new Receipt(options.data as ReceiptInfo);
+    }
+
+    if (this.type == TxType.SetContract) {
+      this.data = new SetContract(options.data as SetContractInfo);
     }
 
     if (options.hash) {
