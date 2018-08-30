@@ -227,6 +227,7 @@ export class Node {
   }
 
   private txHandler = async msg => {
+    console.time('tx handler');
     validateSchema(txSchema, msg.data);
     const tx = new Tx(msg.data);
 
@@ -252,6 +253,7 @@ export class Node {
         this.peer.broadcast(msg);
       }
     }
+    console.timeEnd('tx handler');
   }
 
   checkBlock(block: Block): boolean {
