@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "deploy": "ts-node src/deploy.ts",
+    "deploy-local": "ts-node src/deploy-local.ts",
     "node": "ts-node src/run.ts",
     "monitor": "ts-node src/run-monitor.ts",
     "tx-gen": "ts-node src/generate-txs.ts",

@@ -62,7 +62,7 @@ async function startNode(nodeInfo: NodeInfo, trackerUrl: string): Promise<void> 
   console.log('Starting node', nodeInfo.id);
   runCommand(nodeInfo.host, 'node', env);
 
-  await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 20000);
+  await waitForService(`http://${nodeInfo.host}:${nodeInfo.httpPort}/status`, 60000);
 }
 
 async function startTracker(host: string): Promise<string> {
@@ -84,7 +84,7 @@ async function startTxGenerator(host: string, trackerUrl: string): Promise<void>
   const env = {
     TRACKER_URL: trackerUrl,
   };
-
+  console.log('Strting tx gen', host);
   runCommand(host, 'tx-gen', env);
 }
 
