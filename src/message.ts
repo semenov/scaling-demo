@@ -35,7 +35,7 @@ export function sendMessage(socket: Socket, msg: Message) {
     console.timeEnd('sendMessage encodeMessage');
     console.time('sendMessage socket.write');
     socket.write(encodedMessage + '\n');
-    console.time('sendMessage socket.write');
+    console.timeEnd('sendMessage socket.write');
   }
 
   console.timeEnd('sendMessage');
