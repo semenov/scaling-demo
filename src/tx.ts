@@ -44,6 +44,9 @@ export class Tx {
     if (this.type == TxType.SetContract) {
       this.data = new SetContract(options.data as SetContractInfo);
     }
+    if (this.type == TxType.ExecuteContract) {
+      this.data = new ExecuteContract(options.data as ExecuteContractInfo);
+    }
 
     if (options.hash) {
       this.hash = options.hash;
