@@ -21,7 +21,7 @@ async function generateTxs() {
   const nodes = await downloadNodesInfo(trackerUrl);
 
   while (true) {
-    await sleep(5);
+    await sleep(10);
     const from = getRandomAddress(fakeAddresses);
     const to = getRandomAddress(fakeAddresses);
     const senderShard = getAddressShard(from);
