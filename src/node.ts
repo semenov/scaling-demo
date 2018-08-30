@@ -20,6 +20,7 @@ import { ValueTransfer } from './value-transfer';
 import { ShardCommit } from './shard-commit';
 import { Receipt } from './receipt';
 import * as Hapi from 'hapi';
+import { ExecuteContract, SetContract } from './gvm';
 
 function getKeyByID(id: number): string {
   return 'peer_' + id;
@@ -41,7 +42,7 @@ export class Node {
 
   constructor(options: NodeOptions) {
     this.peer = new Peer(options.peerOptions);
-    this.pendingTransactions =  new Map();
+    this.pendingTransactions = new Map();
     this.blocks = new BlockStorage({
       blockHandler: this.blockAddHandler,
     });
@@ -169,6 +170,13 @@ export class Node {
       const txAllowed = this.accounts.checkTransaction(tx.data.from, bigInt(tx.data.amount));
       return txAllowed;
     }
+    if (tx.data instanceof ExecuteContract) {
+      return this.accounts.haveContract(tx.data.to);
+    }
+    if (tx.data instanceof SetContract) {
+      // тут надо валидировать код контракта на валидность
+      return true;
+    }
 
     return true;
   }
@@ -192,6 +200,32 @@ export class Node {
               to: tx.data.to,
               amount: tx.data.amount,
             },
+          });
+
+          this.peer.sendInterchangeMessage({
+            type: MessageType.Tx,
+            channel: destinationChain,
+            data: receiptTx.serialize(),
+          });
+        }
+      }
+      if (tx.data instanceof SetContract) {
+        // Поставить контракт можно только с самого аккаунта, значит мы в этом шарде
+        this.accounts.setContract(tx.data.from, tx.data.code);
+      }
+      if (tx.data instanceof ExecuteContract) {
+        const destinationChain = getAddressShard(tx.data.to);
+
+        if (getAddressShard(tx.data.to) == this.chain) {
+          this.accounts.executeContract(tx.data.from, tx.data.to, tx.data.data);
+        } else {
+          // Весь стейт контракта храним на шарде с контрактом, значит на текущем шарде
+          // даже не надо ничего делать
+          // просто отправляем эту транзакцию на нужный шард
+          // Send interchange message to other shard
+          const receiptTx = new Tx({
+            type: TxType.ExecuteContract,
+            data: tx.data,
           });
 
           this.peer.sendInterchangeMessage({
@@ -235,7 +269,11 @@ export class Node {
 
     if (this.pendingTransactions.has(tx.hash)) return;
 
-    if (tx.data instanceof ValueTransfer) {
+    if (
+      (tx.data instanceof ValueTransfer)
+      || (tx.data instanceof SetContract)
+      || (tx.data instanceof ExecuteContract)
+    ) {
       console.time('tx verification');
       const isTxVerified = tx.verifyHash() && tx.data.verifySignature(tx.data.from);
       console.timeEnd('tx verification');
