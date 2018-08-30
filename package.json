@@ -7,7 +7,7 @@
     "start": "ts-node src/index.ts",
     "deploy": "ts-node src/deploy.ts",
     "node": "ts-node src/run.ts",
-    "monitor": "ts-node src/monitor-stats.ts",
+    "monitor": "ts-node src/run-monitor.ts",
     "tx-gen": "ts-node src/generate-txs.ts",
     "tracker": "ts-node src/tracker.ts",
     "test": "echo \"Error: no test specified\" && exit 1"

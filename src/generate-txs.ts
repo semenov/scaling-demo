@@ -50,7 +50,7 @@ async function generateTxs() {
 
     try {
       // console.log(`Sending tx to ${host}:${port}`, tx);
-      fetch(`http://${host}:${port}/txs`, {
+      await fetch(`http://${host}:${port}/txs`, {
         method: 'POST',
         body:    JSON.stringify(tx.serialize()),
         headers: { 'Content-Type': 'application/json' },
