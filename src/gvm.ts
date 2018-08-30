@@ -48,11 +48,17 @@ export class SetContract {
   }
 }
 
-interface ExecuteContractInfo {
+export interface ExecuteContractInfo {
   from: string;
   to: string;
   signature?: string;
   data: Map<any, any>;
+}
+export interface ExecuteContractRawInfo {
+  from: string;
+  to: string;
+  signature?: string;
+  data: Object;
 }
 export class ExecuteContract {
   from: string;
@@ -60,10 +66,10 @@ export class ExecuteContract {
   signature: string;
   data: Map<any, any>;
 
-  constructor(options: ExecuteContractInfo) {
+  constructor(options: ExecuteContractRawInfo) {
     this.from = options.from;
     this.signature = options.signature || '';
-    this.data = options.data;
+    this.data = new Map(Object.entries(options.data));
     this.to = options.to;
   }
   sign(privateKey: string): void {
