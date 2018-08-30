@@ -21,7 +21,7 @@ async function generateTxs() {
   const nodes = await downloadNodesInfo(trackerUrl);
 
   while (true) {
-    await sleep(1);
+    await sleep(5);
     const from = getRandomAddress(fakeAddresses);
     const to = getRandomAddress(fakeAddresses);
     const senderShard = getAddressShard(from);
@@ -49,13 +49,8 @@ async function generateTxs() {
     const port = nodeInfo.httpPort;
 
     try {
-      // console.log(`Sending tx to ${host}:${port}`, tx);
-      console.time('status');
-      await fetch(`http://${host}:${port}/status`);
-      console.timeEnd('status');
-
       console.time('tx');
-      await fetch(`http://${host}:${port}/txs`, {
+      fetch(`http://${host}:${port}/txs`, {
         method: 'POST',
         body:    JSON.stringify(tx.serialize()),
         headers: { 'Content-Type': 'application/json' },
