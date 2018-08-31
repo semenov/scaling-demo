@@ -38,6 +38,7 @@ export async function createServer(driver: Driver): Promise<string> {
   await ssh.putFile(installScriptFile, 'install.sh');
 
   await ssh.execCommand(`sudo bash install.sh > install.log 2>&1`);
+  console.log('Executed install command', ip);
 
   ssh.dispose();
 
@@ -52,16 +53,21 @@ export async function runCommand(
 ): Promise<void> {
   const ssh = new NodeSSH();
 
-  await ssh.connect({
-    host,
-    username: 'ubuntu',
-    privateKey: sshKeyFile,
-  });
+  try {
+    await ssh.connect({
+      host,
+      username: driver.sshUser,
+      privateKey: sshKeyFile,
+    });
 
-  const execString = envToString(env) + `nohup npm run ${command} > /tmp/app.log 2>&1 <&- &`;
-  console.log('Running command', host, execString);
-  await ssh.execCommand(execString, { cwd: `/home/${driver.sshUser}/scaling-demo` });
-  ssh.dispose();
+    const execString = envToString(env) + `nohup npm run ${command} > /tmp/app.log 2>&1 <&- &`;
+    console.log('Running command', host, execString);
+    await ssh.execCommand(execString, { cwd: `/home/${driver.sshUser}/scaling-demo` });
+    ssh.dispose();
+  } catch (e) {
+    console.error('Problems with running command on', host, e);
+    throw e;
+  }
 }
 
 export async function prepareServer(driver: Driver, host: string): Promise<void> {
