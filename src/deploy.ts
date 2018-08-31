@@ -3,7 +3,8 @@ import { nodeCount, txGeneratorsCount } from './config';
 import { NodeInfo, waitForService } from './common';
 import fetch from 'node-fetch';
 import { monitorStats } from './monitor-stats';
-import { createServer, runCommand, getRunningServers, prepareServer } from './server-management';
+import { createServer, runCommand, prepareServer } from './server-management';
+import { AWSDriver } from './aws-driver';
 
 /*
 Как должно быть для ускорения дебага:
@@ -14,13 +15,14 @@ import { createServer, runCommand, getRunningServers, prepareServer } from './se
 */
 
 async function reserveServers(): Promise<string[]> {
+  const driver = new AWSDriver();
   const serverCount = nodeCount + 1 + txGeneratorsCount; // Nodes plus tracker and tx gen
-  const existingIps = await getRunningServers();
+  const existingIps = await driver.getRunningServers();
   const createServerCount = serverCount - existingIps.length;
 
   const serverPromises: Promise<string>[] = [];
   for (let i = 0; i < createServerCount; i++) {
-    const serverPromise = createServer();
+    const serverPromise = createServer(driver);
     serverPromises.push(serverPromise);
     await sleep(500);
   }
