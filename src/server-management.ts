@@ -8,8 +8,10 @@ const sshKeyFile = path.join(__dirname, '../id_rsa');
 const installScriptFile = path.join(__dirname, '../install.sh');
 const prepareScriptFile = path.join(__dirname, '../prepare.sh');
 
-interface Driver {
+export interface Driver {
   createServer: () => Promise<string>;
+  getRunningServers: () => Promise<string[]>;
+  sshUser: string;
 }
 
 function envToString(env: object): string {
@@ -27,7 +29,7 @@ export async function createServer(driver: Driver): Promise<string> {
 
   await ssh.connect({
     host: ip,
-    username: 'ubuntu',
+    username: driver.sshUser,
     privateKey: sshKeyFile,
   });
 
@@ -35,14 +37,19 @@ export async function createServer(driver: Driver): Promise<string> {
 
   await ssh.putFile(installScriptFile, 'install.sh');
 
-  await ssh.execCommand('sudo bash /home/ubuntu/install.sh > install.log 2>&1 ');
+  await ssh.execCommand(`sudo bash install.sh > install.log 2>&1`);
 
   ssh.dispose();
 
   return ip;
 }
 
-export async function runCommand(host: string, command: string, env: object): Promise<void> {
+export async function runCommand(
+  driver: Driver,
+  host: string,
+  command: string,
+  env: object,
+): Promise<void> {
   const ssh = new NodeSSH();
 
   await ssh.connect({
@@ -53,11 +60,11 @@ export async function runCommand(host: string, command: string, env: object): Pr
 
   const execString = envToString(env) + `nohup npm run ${command} > /tmp/app.log 2>&1 <&- &`;
   console.log('Running command', host, execString);
-  await ssh.execCommand(execString, { cwd: '/home/ubuntu/scaling-demo' });
+  await ssh.execCommand(execString, { cwd: `/home/${driver.sshUser}/scaling-demo` });
   ssh.dispose();
 }
 
-export async function prepareServer(host: string): Promise<void> {
+export async function prepareServer(driver: Driver, host: string): Promise<void> {
   const ssh = new NodeSSH();
 
   console.log('Preparing server', host);
@@ -65,13 +72,13 @@ export async function prepareServer(host: string): Promise<void> {
   try {
     await ssh.connect({
       host,
-      username: 'ubuntu',
+      username: driver.sshUser,
       privateKey: sshKeyFile,
     });
 
     await ssh.putFile(prepareScriptFile, 'prepare.sh');
     await ssh.execCommand(
-      'sudo bash /home/ubuntu/prepare.sh > prepare.log  2>&1',
+      `sudo bash prepare.sh > prepare.log  2>&1`,
     );
 
     console.log('Server prepared', host);

@@ -7,6 +7,7 @@ function getIpFromDescription(description) {
 
 export class AWSDriver {
   private ec2: AWS.EC2;
+  sshUser: string = 'ubuntu';
 
   constructor() {
     const awsConfigFile = path.join(__dirname, '../aws-config.json');
