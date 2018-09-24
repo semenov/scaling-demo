@@ -41,6 +41,7 @@
     "tslint-config-airbnb": "^5.9.2",
     "typescript": "^3.0.1",
     "uuid": "^3.3.2",
+    "vm2": "^3.6.3",
     "wait-port": "^0.2.2"
   }
 }
